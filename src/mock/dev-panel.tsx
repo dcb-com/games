@@ -43,6 +43,8 @@ export function DevPanel() {
   const state = useMock();
   const a = state.agent;
   const r = state.run;
+  // The start page has nothing for the controls to change.
+  if (pathname === "/") return null;
 
   return (
     <aside
