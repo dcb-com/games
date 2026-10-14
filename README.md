@@ -27,16 +27,17 @@ both screens.
 
 If something goes wrong:
 
-- **Wrong Node version.** `pnpm i` stops with "Unsupported engine". Run
+- **Wrong Node version.** `pnpm i` stops with "Unsupported environment".
+  Run
   `node -v`; it must be 22.21 or newer in the 22 line. Run `nvm install` (or
   `fnm install`) in this folder, then `nvm use`.
 - **`corepack: command not found`.** Some Node installs leave it out. Run
   `npm i -g corepack`, then `corepack enable`. Or skip Corepack and put
   `npx pnpm@11.27.0` in place of `pnpm` in every command.
-- **"Failed to switch pnpm to v11.27.0"** or a pnpm older than 11. An older
-  pnpm installed some other way is first on the path. Run `corepack enable`
-  and open a new terminal, or use `npx pnpm@11.27.0 i` and
-  `npx pnpm@11.27.0 dev`.
+- **"Failed to switch pnpm to v11.27.0"**, or `pnpm -v` shows a version
+  older than 11. A pnpm installed some other way comes first on the path. Run
+  every command through Corepack instead: `corepack pnpm i`,
+  `corepack pnpm dev`. `npx pnpm@11.27.0 i` works too.
 - **Port 5180 is in use.** Run `pnpm dev --port 5181`, or find the other
   server with `lsof -i :5180` and stop it.
 - **The page is blank or old.** Stop the server, run `rm -rf node_modules/.vite`,

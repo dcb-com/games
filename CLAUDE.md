@@ -15,9 +15,9 @@ pnpm dev                 # then open the printed address, http://localhost:5180
 
 If it fails:
 
-- Wrong Node ("Unsupported engine"): `node -v` must be 22.21 or newer in the 22 line. Run `nvm install` here.
+- Wrong Node ("Unsupported environment"): `node -v` must be 22.21 or newer in the 22 line. Run `nvm install` here.
 - `corepack: command not found`: `npm i -g corepack && corepack enable`, or use `npx pnpm@11.27.0` in place of `pnpm`.
-- "Failed to switch pnpm to v11.27.0", or pnpm older than 11: run `corepack enable` and open a new terminal, or use `npx pnpm@11.27.0`.
+- "Failed to switch pnpm to v11.27.0", or `pnpm -v` older than 11: another pnpm is first on the path. Use `corepack pnpm i` and `corepack pnpm dev` (or `npx pnpm@11.27.0`).
 - Port 5180 in use: `pnpm dev --port 5181`, or stop the other server (`lsof -i :5180`).
 - Blank or stale page: stop the server, `rm -rf node_modules/.vite`, start again.
 
