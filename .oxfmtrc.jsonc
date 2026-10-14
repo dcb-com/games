@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  // Prettier's width. oxfmt's own default is 100.
+  "printWidth": 80,
+  "sortPackageJson": false,
+  "sortTailwindcss": { "functions": ["cn", "cva"] },
+  "ignorePatterns": [
+    // Written by the TanStack Router plugin from src/routes.
+    "src/routeTree.gen.ts",
+    "pnpm-lock.yaml",
+    "dist",
+  ],
+}

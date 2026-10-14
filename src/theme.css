@@ -1,0 +1,442 @@
+/* ──────────────────────────────────────────────────────────────────
+   DCB Design System, Tailwind tokens (UNIFIED, May 2026)
+
+   One palette shared across DCB web surfaces. Shaped by the app's vibe:
+   warm stone neutrals, teal primary, purple as a rare secondary accent,
+   Inter everywhere, soft 16px radii.
+
+   shadcn-style semantic tokens map onto the DCB foundations:
+     · teal  #009689 → --primary (the single CTA color)
+     · stone (warm)  → surfaces, text, lines
+     · teal-100      → --accent (active nav / selected highlight)
+
+   Rules:
+     · Every color, radius, shadow and font an app uses comes from here.
+       A raw palette class (bg-amber-50) or a hex value in a class
+       (text-[#047b71]) is a bug; add a token first. oxlint enforces it.
+     · Tokens are named for the job they do, never for the shade.
+     · Font sizes come from the scale: text-2xs, text-xs, text-sm, text-base
+       and up. An arbitrary size (text-[10px], text-[13px], text-[15px]) is a
+       bug; 10px is text-2xs, 13px is text-sm, 15px is text-base or a button
+       size. text-2xs is the one step this theme adds to Tailwind's scale.
+     · Every token has a value in both the light block and the dark block
+       below. src/theme.test.ts fails when one side is missing.
+     · Dark mode is parked. See src/index.css.
+   ────────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Surfaces (warm stone) */
+  --background: #fafaf9; /* stone-50 · page background */
+  --foreground: #1c1917; /* stone-900 · primary text */
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --popover: #ffffff;
+  --popover-foreground: #1c1917;
+
+  /* Primary action (teal) */
+  --primary: #009689; /* teal-600 · the single CTA color */
+  --primary-hover: #047b71; /* hover state for teal links and text buttons */
+  --primary-foreground: #ffffff;
+
+  /* Secondary / muted surfaces (stone) */
+  --secondary: #f5f5f4; /* stone-100 */
+  --secondary-foreground: #57534d; /* stone-600 */
+  --muted: #f5f5f4; /* stone-100 */
+  --muted-foreground: #79716b; /* stone-500 */
+
+  /* Accent, selected / active highlight (soft teal) */
+  --accent: #ccfbf1; /* teal-100 */
+  --accent-foreground: #009689; /* teal-600 */
+
+  /* Accent-strong, purple, the rare secondary accent (buttons only) */
+  --accent-strong: #9810fa;
+  --accent-strong-hover: #7e0fcc;
+  --accent-strong-foreground: #ffffff;
+
+  --destructive: #d32f2f;
+  --destructive-foreground: #ffffff;
+
+  /* Semantic status colors. Each is a triple: a light-100 background, a
+     saturated-700 foreground (also the color for a lone icon or a line of
+     text in that state), and a 300 border for a boxed notice. Same shape as
+     --accent/--accent-foreground. destructive-soft is distinct from
+     --destructive (which is the solid button/ring color) because the two
+     don't resolve to visually equivalent reds. */
+  --success: #dcfce7; /* green-100 */
+  --success-foreground: #047857; /* emerald-700 */
+  --success-border: #86efac; /* green-300 */
+  --warning: #fef3c6; /* amber-100 */
+  --warning-foreground: #b45309; /* amber-700 */
+  --warning-border: #fcd34d; /* amber-300 */
+  --destructive-soft: #fee2e2; /* red-100 */
+  --destructive-soft-foreground: #b91c1c; /* red-700 */
+  --destructive-soft-border: #fca5a5; /* red-300 */
+
+  /* An internal note, which only staff see: the console's notes in a case
+     history and the composer while it writes a note. Softer than warning,
+     because a note is not a problem. */
+  --note: #fffbeb; /* amber-50 */
+  --note-foreground: #92400e; /* amber-800 */
+  --note-border: #fde68a; /* amber-200 */
+
+  /* Lines + fields */
+  --border: #e7e5e4; /* stone-200 */
+  --input: #e7e5e4; /* stone-200 */
+  --ring: #009689; /* teal focus ring */
+
+  /* Charts, teal scale, plus one neutral for a series that should recede */
+  --chart-1: #009689;
+  --chart-2: #14b8a6;
+  --chart-3: #2dd4bf;
+  --chart-4: #5eead4;
+  --chart-5: #99f6e4;
+  --chart-muted: #a8a29e; /* stone-400 */
+
+  /* Brand panel, the dark marketing aside on the auth pages. The same in
+     both themes on purpose: it is a fixed dark surface, not a themed one. */
+  --brand-panel: #1c1917; /* stone-900 */
+  --brand-panel-foreground: #fafaf9; /* stone-50 */
+
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #57534d; /* stone-600 */
+  --sidebar-primary: #009689;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ccfbf1; /* teal-100 */
+  --sidebar-accent-foreground: #009689;
+  --sidebar-border: #e7e5e4;
+  --sidebar-ring: #009689;
+
+  --radius: 1rem; /* 16px, the DCB workhorse radius */
+
+  /* Shadows, barely-there, warm (stone-tinted) */
+  --shadow-2xs: 0 1px 2px 0 rgba(28, 25, 23, 0.04);
+  --shadow-xs: 0 1px 2px 0 rgba(28, 25, 23, 0.04);
+  --shadow-sm:
+    0 1px 2px 0 rgba(28, 25, 23, 0.06), 0 1px 1px 0 rgba(28, 25, 23, 0.04);
+  --shadow:
+    0 1px 2px 0 rgba(28, 25, 23, 0.06), 0 1px 1px 0 rgba(28, 25, 23, 0.04);
+  --shadow-md:
+    0 4px 8px -2px rgba(28, 25, 23, 0.08), 0 2px 4px -2px rgba(28, 25, 23, 0.04);
+  --shadow-lg: 0 12px 24px -8px rgba(28, 25, 23, 0.12);
+  --shadow-xl: 0 20px 40px -12px rgba(28, 25, 23, 0.16);
+  --shadow-2xl: 0 28px 56px -16px rgba(28, 25, 23, 0.24);
+
+  --tracking-normal: -0.005em; /* Inter reads better very slightly tight */
+  --spacing: 0.25rem;
+
+  @variant dark {
+    /* Surfaces (warm stone, dark) */
+    --background: #1c1917; /* stone-900 */
+    --foreground: #fafaf9;
+    --card: #292524; /* stone-800 */
+    --card-foreground: #fafaf9;
+    --popover: #292524;
+    --popover-foreground: #fafaf9;
+
+    /* Primary (teal, brightened for dark) */
+    --primary: #2dd4bf; /* teal-400 */
+    --primary-hover: #5eead4; /* teal-300 */
+    --primary-foreground: #042f2e; /* deep teal */
+
+    --secondary: #292524;
+    --secondary-foreground: #d6d3d1; /* stone-300 */
+    --muted: #292524;
+    --muted-foreground: #a8a29e; /* stone-400 */
+
+    --accent: #134e4a; /* teal-900 */
+    --accent-foreground: #5eead4; /* teal-300 */
+
+    --accent-strong: #c084fc; /* purple-400, brightened for dark */
+    --accent-strong-hover: #a855f7; /* purple-500 */
+    --accent-strong-foreground: #3b0764; /* deep purple */
+
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+
+    --success: #052e16; /* green-950 */
+    --success-foreground: #6ee7b7; /* emerald-300 */
+    --success-border: #166534; /* green-800 */
+    --warning: #451a03; /* amber-950 */
+    --warning-foreground: #fcd34d; /* amber-300 */
+    --warning-border: #92400e; /* amber-800 */
+    --destructive-soft: #450a0a; /* red-950 */
+    --destructive-soft-foreground: #fca5a5; /* red-300 */
+    --destructive-soft-border: #991b1b; /* red-800 */
+    --note: #2a1a06; /* between amber-950 and the page */
+    --note-foreground: #fde68a; /* amber-200 */
+    --note-border: #78350f; /* amber-900 */
+
+    --border: #44403c; /* stone-700 */
+    --input: #44403c;
+    --ring: #2dd4bf;
+
+    --chart-1: #2dd4bf;
+    --chart-2: #14b8a6;
+    --chart-3: #009689;
+    --chart-4: #5eead4;
+    --chart-5: #99f6e4;
+    --chart-muted: #57534d; /* stone-600 */
+
+    --brand-panel: #1c1917;
+    --brand-panel-foreground: #fafaf9;
+
+    --sidebar: #1c1917;
+    --sidebar-foreground: #d6d3d1;
+    --sidebar-primary: #2dd4bf;
+    --sidebar-primary-foreground: #042f2e;
+    --sidebar-accent: #134e4a;
+    --sidebar-accent-foreground: #5eead4;
+    --sidebar-border: #44403c;
+    --sidebar-ring: #2dd4bf;
+
+    --radius: 1rem;
+
+    --shadow-2xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 1px 1px 0 rgba(0, 0, 0, 0.3);
+    --shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 1px 1px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md:
+      0 4px 8px -2px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 12px 24px -8px rgba(0, 0, 0, 0.6);
+    --shadow-xl: 0 20px 40px -12px rgba(0, 0, 0, 0.7);
+    --shadow-2xl: 0 28px 56px -16px rgba(0, 0, 0, 0.8);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-strong-hover: var(--accent-strong-hover);
+  --color-accent-strong-foreground: var(--accent-strong-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-border: var(--success-border);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-border: var(--warning-border);
+  --color-note: var(--note);
+  --color-note-foreground: var(--note-foreground);
+  --color-note-border: var(--note-border);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-soft-foreground: var(--destructive-soft-foreground);
+  --color-destructive-soft-border: var(--destructive-soft-border);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-muted: var(--chart-muted);
+  --color-brand-panel: var(--brand-panel);
+  --color-brand-panel-foreground: var(--brand-panel-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Inter for everything; JetBrains Mono for amounts / receipts / code. Both
+     are self-hosted variable fonts, imported at the top of src/index.css, so the names carry the "Variable" suffix the packages ship. */
+  --font-sans:
+    "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    "Helvetica Neue", sans-serif;
+  --font-mono:
+    "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* The one step this theme adds below Tailwind's text-xs, for a dense table
+     header or a badge that has to sit inside a row. */
+  --text-2xs: 0.6875rem; /* 11px */
+  --text-2xs--line-height: 1rem;
+
+  /* Motion. The sliding bar on an indeterminate progress track. */
+  --animate-run-progress: run-progress 1.4s ease-in-out infinite;
+
+  @keyframes run-progress {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(300%);
+    }
+  }
+
+  --radius-xs: calc(var(--radius) - 12px); /* 4px, checkboxes and chips */
+  --radius-sm: calc(var(--radius) - 8px); /* 8px */
+  --radius-md: calc(var(--radius) - 4px); /* 12px */
+  --radius-lg: var(--radius); /* 16px */
+  --radius-xl: calc(var(--radius) + 4px); /* 20px */
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+
+  --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
+  --tracking-tight: calc(var(--tracking-normal) - 0.025em);
+  --tracking-normal: var(--tracking-normal);
+  --tracking-wide: calc(var(--tracking-normal) + 0.025em);
+  --tracking-wider: calc(var(--tracking-normal) + 0.05em);
+  --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+}
+
+/* Text roles. One class per job, so a caption looks the same on every page
+   and a change to the role changes every page. Put a margin or a one-off
+   override next to the role: `type-caption mt-1`. Tailwind emits a role
+   before any single-property utility, so the override wins. */
+@utility type-page-title {
+  @apply text-foreground text-2xl font-semibold tracking-tight;
+}
+@utility type-label {
+  @apply text-foreground text-sm font-medium;
+}
+@utility type-body {
+  @apply text-foreground text-sm;
+}
+@utility type-secondary {
+  @apply text-muted-foreground text-sm;
+}
+@utility type-caption {
+  @apply text-muted-foreground text-xs;
+}
+
+/* Enter and exit animations for the dialog and the sheet. `animate-in` and
+   `animate-out` pick the keyframes; `fade-*`, `zoom-*` and `slide-*` only set
+   the variables those keyframes read, so several of them compose on one
+   element and each `data-[state=…]` variant turns its own set on.
+
+   The duration comes from Tailwind's own `duration-*` utility through
+   `--tw-duration`, and falls back to 150ms when the element sets none. Only
+   the classes dialog.tsx and sheet.tsx use are defined here. */
+@keyframes enter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate3d(
+        var(--tw-enter-translate-x, 0),
+        var(--tw-enter-translate-y, 0),
+        0
+      )
+      scale3d(
+        var(--tw-enter-scale, 1),
+        var(--tw-enter-scale, 1),
+        var(--tw-enter-scale, 1)
+      );
+  }
+}
+
+@keyframes exit {
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate3d(
+        var(--tw-exit-translate-x, 0),
+        var(--tw-exit-translate-y, 0),
+        0
+      )
+      scale3d(
+        var(--tw-exit-scale, 1),
+        var(--tw-exit-scale, 1),
+        var(--tw-exit-scale, 1)
+      );
+  }
+}
+
+@utility animate-in {
+  animation: enter var(--tw-duration, 150ms) ease-out;
+}
+@utility animate-out {
+  animation: exit var(--tw-duration, 150ms) ease-out;
+}
+
+@utility fade-in-0 {
+  --tw-enter-opacity: 0;
+}
+@utility fade-out-0 {
+  --tw-exit-opacity: 0;
+}
+
+@utility zoom-in-95 {
+  --tw-enter-scale: 0.95;
+}
+@utility zoom-out-95 {
+  --tw-exit-scale: 0.95;
+}
+
+/* A panel slides in from the edge it is pinned to, so the distance is its own
+   full width or height. */
+@utility slide-in-from-top {
+  --tw-enter-translate-y: -100%;
+}
+@utility slide-in-from-bottom {
+  --tw-enter-translate-y: 100%;
+}
+@utility slide-in-from-left {
+  --tw-enter-translate-x: -100%;
+}
+@utility slide-in-from-right {
+  --tw-enter-translate-x: 100%;
+}
+/* The small slide the dropdown, popover and tooltip use: half a rem. */
+@utility slide-in-from-top-2 {
+  --tw-enter-translate-y: -0.5rem;
+}
+@utility slide-in-from-bottom-2 {
+  --tw-enter-translate-y: 0.5rem;
+}
+@utility slide-in-from-left-2 {
+  --tw-enter-translate-x: -0.5rem;
+}
+@utility slide-in-from-right-2 {
+  --tw-enter-translate-x: 0.5rem;
+}
+@utility slide-out-to-top {
+  --tw-exit-translate-y: -100%;
+}
+@utility slide-out-to-bottom {
+  --tw-exit-translate-y: 100%;
+}
+@utility slide-out-to-left {
+  --tw-exit-translate-x: -100%;
+}
+@utility slide-out-to-right {
+  --tw-exit-translate-x: 100%;
+}
+
+/* Reduced motion. When the reader asks the system for less movement, cut every
+   animation and transition to nothing. Spinners are the exception: a still
+   spinner reads as a frozen app, and it turns in place without sliding
+   anything across the screen. */
+@media (prefers-reduced-motion: reduce) {
+  *:not(.animate-spin),
+  *:not(.animate-spin)::before,
+  *:not(.animate-spin)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

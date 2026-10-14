@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["vite/client", "node"],
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+    "isolatedModules": true,
+    "incremental": true,
+    "tsBuildInfoFile": "${configDir}/.cache/tsbuildinfo.json",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "checkJs": true,
+    "module": "Preserve",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    // `@dcb/ui`, `@dcb/money` and `@dcb/phone` point into src, so code written
+    // here imports them the same way the real apps do and moves over unchanged.
+    "paths": {
+      "~/*": ["./src/*"],
+      "@dcb/ui": ["./src/ui/index.ts"],
+      "@dcb/ui/*": ["./src/ui/*"],
+      "@dcb/money/*": ["./src/money/*"],
+      "@dcb/phone/*": ["./src/phone/*"]
+    }
+  },
+  "include": ["src", "tooling", "*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

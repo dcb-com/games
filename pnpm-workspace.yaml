@@ -1,0 +1,7 @@
+# Stop at once, with a plain message, when Node is older than package.json's
+# "engines" asks for.
+engineStrict: true
+
+allowBuilds:
+  "@tailwindcss/oxide": true
+  esbuild: true

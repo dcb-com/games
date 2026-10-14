@@ -1,0 +1,22 @@
+/* Fonts, self-hosted. Vite fingerprints them into the bundle, so the app
+ * makes no request to Google. theme.css points --font-sans and --font-mono
+ * at these families. */
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+
+@import "tailwindcss";
+@import "./theme.css";
+
+/* Dark mode is built and parked, as in the real apps. The `dark` variant is
+ * bound to a `.dark` class nothing adds, and the browser draws its own
+ * controls in light. App code never uses `dark:`; the tokens carry it. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  color-scheme: light;
+}
+
+html,
+body {
+  overscroll-behavior: none;
+}

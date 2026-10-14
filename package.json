@@ -1,0 +1,57 @@
+{
+  "name": "dcb-games",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.21.0",
+    "pnpm": "^11.27.0"
+  },
+  "packageManager": "pnpm@11.27.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt --check",
+    "format:fix": "oxfmt",
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm lint && pnpm format && pnpm test && pnpm build"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@tanstack/react-form": "^1.33.5",
+    "@tanstack/react-router": "^1.170.38",
+    "@tanstack/react-table": "^9.3.1",
+    "class-variance-authority": "^0.7.1",
+    "cmdk": "^1.1.1",
+    "lucide-react": "^1.47.0",
+    "radix-ui": "^1.4.3",
+    "react": "19.2.3",
+    "react-day-picker": "^10.0.2",
+    "react-dom": "19.2.3",
+    "recharts": "^3.10.1",
+    "sonner": "^2.0.8",
+    "tailwind-merge": "^3.3.1",
+    "ts-pattern": "5.9.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/router-plugin": "^1.168.40",
+    "@types/node": "^22.20.3",
+    "@types/react": "~19.2.0",
+    "@types/react-dom": "~19.2.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint-plugin-better-tailwindcss": "^4.7.0",
+    "happy-dom": "20.0.0",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
+    "oxlint-tsgolint": "7.0.2003",
+    "tailwindcss": "4.3.3",
+    "typescript": "~7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}
