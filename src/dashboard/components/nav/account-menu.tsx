@@ -10,7 +10,7 @@ import {
 } from "@dcb/ui/dropdown-menu";
 
 // The signed-in admin and their company. Made up.
-const USER = {
+export const USER = {
   firstName: "Pat",
   name: "Pat Admin",
   email: "pat.admin@example.com",

@@ -21,7 +21,8 @@ import { RunStepHeader } from "~/dashboard/components/payroll/run-step-header";
 import { StepFooter } from "~/dashboard/components/payroll/step-footer";
 import { fmtDate, plural } from "~/dashboard/lib/format";
 import { moneyCents } from "~/dashboard/lib/money";
-import { GameSlot } from "~/games/game-slot";
+import { USER } from "~/dashboard/components/nav/account-menu";
+import { DeskDefense } from "~/games/desk-defense/desk-defense";
 import { payrollMoment } from "~/games/moments";
 import type { RunStage } from "~/mock/store";
 import { run, runStatus, useMock } from "~/mock/store";
@@ -94,9 +95,9 @@ export function PayrollRunPage() {
   const now = useNow();
   const moment = payrollMoment(r);
   const slot = (
-    <GameSlot
+    <DeskDefense
       moment={moment}
-      where="Payroll dashboard · under the wait while a run is worked out"
+      player={{ name: USER.name, email: USER.email }}
       className="mt-4 max-w-xl"
     />
   );

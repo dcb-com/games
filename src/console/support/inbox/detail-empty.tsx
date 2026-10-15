@@ -2,10 +2,11 @@ import { Inbox } from "lucide-react";
 
 import { Button } from "@dcb/ui/button";
 
-import { GameSlot } from "~/games/game-slot";
+import { DeskDefense } from "~/games/desk-defense/desk-defense";
 import { consoleMoment } from "~/games/moments";
 import { useMock } from "~/mock/store";
 import { MINE_GUIDE } from "~/console/support/case-words";
+import { useMe } from "~/console/lib/use-me";
 import { useCommandMenu } from "~/console/support/commands/command-registry";
 import { KeyHint } from "~/console/support/commands/key-hint";
 import { usePickUpNext } from "~/console/support/inbox/use-pick-up-next";
@@ -27,16 +28,19 @@ export function DetailEmpty({ view }: { view: "new" | "mine" }) {
   const { setShortcutsOpen } = useCommandMenu();
   const waiting = next.count ?? 0;
   const moment = consoleMoment(useMock().agent);
+  const me = useMe().data;
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-8 overflow-y-auto p-6">
-      {/* Not in the real console: where a game would open while the
-          agent has nothing to do. */}
-      <GameSlot
-        moment={moment}
-        where="Support console · the detail pane while nothing is open"
-        className="max-w-xl shrink-0"
-      />
+      {/* Not in the real console: a game for while the agent has
+          nothing to do. */}
+      {me && (
+        <DeskDefense
+          moment={moment}
+          player={{ name: me.name, email: me.email }}
+          className="max-w-xl shrink-0"
+        />
+      )}
       <div className="flex w-full max-w-sm flex-col items-center gap-6 text-center">
         <span className="bg-muted text-muted-foreground flex size-10 items-center justify-center rounded-full">
           <Inbox className="size-5" />
