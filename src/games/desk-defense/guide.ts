@@ -18,7 +18,7 @@ export const HOST = "Dot";
 export const GUIDE: GuideStep[] = [
   {
     words:
-      "Hi, I'm Dot. Bugs want to crawl across your desk. Let's stop them together.",
+      "Hi, I'm Dot. Fuzzy critters want to cross your desk. Let's stop them together.",
     holds: true,
     enter: true,
     done: () => false,
@@ -46,21 +46,21 @@ export const GUIDE: GuideStep[] = [
   },
   {
     words:
-      "Good. Bugs come in from the right, and staplers fire at anything in their row.",
+      "Good. Critters come in from the right. Staplers fire at anything in their row, and every fourth staple is gold.",
     holds: false,
     enter: false,
     done: (r) => r.kills >= 1,
   },
   {
     words:
-      "Got one! Add more staplers as energy comes in. Every bug you stop earns coins.",
+      "Got one! Add more staplers as energy comes in. Every critter you stop earns coins.",
     holds: false,
     enter: true,
     done: (_, seconds) => seconds > 7,
   },
   {
     words:
-      "If a bug reaches the left edge, the shredder clears that row once. Then it's up to you.",
+      "If a critter reaches the left edge, the shredder clears that row once. Then it's up to you.",
     holds: false,
     enter: true,
     done: (_, seconds) => seconds > 7,
@@ -68,4 +68,4 @@ export const GUIDE: GuideStep[] = [
 ];
 
 export const GUIDE_DONE =
-  "You're ready. Spend your coins on upgrades between levels, and watch for new helpers.";
+  "You're ready. Spend your coins on upgrades between levels. Every helper has a special move, so try each new one.";

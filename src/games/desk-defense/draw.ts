@@ -1,11 +1,24 @@
+import { ART, ellipse, hsl, rounded } from "~/games/desk-defense/art/color";
+import { drawCritter, sampleCritter } from "~/games/desk-defense/art/critters";
+import type { Field } from "~/games/desk-defense/art/desk";
+import {
+  drawDesk,
+  drawShot,
+  drawShredder,
+} from "~/games/desk-defense/art/desk";
+import { furSprite } from "~/games/desk-defense/art/fur";
+import type { Fx, Place } from "~/games/desk-defense/art/fx";
+import { RESTING, drawHelper, lookOf } from "~/games/desk-defense/art/helpers";
 import { COLS, ROWS } from "~/games/desk-defense/levels";
-import type { Bug, Helper, Round, Tool } from "~/games/desk-defense/round";
+import type { Round, Tool } from "~/games/desk-defense/round";
 import { canPlace, helperAt, progress } from "~/games/desk-defense/round";
-import type { BugKind, HelperKind } from "~/games/desk-defense/units";
-import { HELPERS } from "~/games/desk-defense/units";
+import type { CritterKind, HelperKind } from "~/games/desk-defense/units";
+import { CRITTERS, HELPERS } from "~/games/desk-defense/units";
 
-// Draws a round onto the canvas. Every color is read from the theme's CSS
-// variables when the game opens, so the desk matches the screen around it.
+// Draws a whole round onto the canvas: the desk, then each row's helpers,
+// critters and shots, then the effects, then the card bar on top. The bar
+// is the game's own UI, so its colors come from the theme's CSS variables;
+// the art on the desk uses the game's own colors in art/color.ts.
 
 type Token =
   | "background"
@@ -13,28 +26,14 @@ type Token =
   | "card"
   | "muted"
   | "muted-foreground"
-  | "secondary"
-  | "secondary-foreground"
   | "border"
   | "primary"
-  | "primary-foreground"
   | "accent"
-  | "accent-strong"
-  | "success"
-  | "success-foreground"
   | "warning"
   | "warning-foreground"
   | "warning-border"
   | "destructive"
-  | "destructive-soft"
   | "destructive-soft-foreground"
-  | "destructive-soft-border"
-  | "note"
-  | "note-foreground"
-  | "chart-2"
-  | "chart-3"
-  | "chart-4"
-  | "chart-muted"
   | "ring";
 
 export type Palette = Record<Token, string> & { font: string };
@@ -48,28 +47,14 @@ export function readPalette(el: HTMLElement): Palette {
     card: v("card"),
     muted: v("muted"),
     "muted-foreground": v("muted-foreground"),
-    secondary: v("secondary"),
-    "secondary-foreground": v("secondary-foreground"),
     border: v("border"),
     primary: v("primary"),
-    "primary-foreground": v("primary-foreground"),
     accent: v("accent"),
-    "accent-strong": v("accent-strong"),
-    success: v("success"),
-    "success-foreground": v("success-foreground"),
     warning: v("warning"),
     "warning-foreground": v("warning-foreground"),
     "warning-border": v("warning-border"),
     destructive: v("destructive"),
-    "destructive-soft": v("destructive-soft"),
     "destructive-soft-foreground": v("destructive-soft-foreground"),
-    "destructive-soft-border": v("destructive-soft-border"),
-    note: v("note"),
-    "note-foreground": v("note-foreground"),
-    "chart-2": v("chart-2"),
-    "chart-3": v("chart-3"),
-    "chart-4": v("chart-4"),
-    "chart-muted": v("chart-muted"),
     ring: v("ring"),
     font: style.fontFamily || "sans-serif",
   };
@@ -89,9 +74,10 @@ export interface Layout {
 }
 
 export function layout(width: number, height: number): Layout {
-  const barH = Math.round(Math.max(40, height * 0.18));
-  const shredW = Math.round(width * 0.05);
+  const barH = Math.round(Math.max(44, height * 0.18));
+  const shredW = Math.round(width * 0.055);
   const cardH = barH - 10;
+  const cardW = Math.round(Math.min(cardH * 0.82, (width * 0.76) / 9 - 3));
   return {
     width,
     height,
@@ -99,13 +85,8 @@ export function layout(width: number, height: number): Layout {
     shredW,
     cellW: (width - shredW) / COLS,
     cellH: (height - barH) / ROWS,
-    card: {
-      x: Math.round(width * 0.13),
-      y: 5,
-      w: Math.round(cardH * 0.95),
-      h: cardH,
-    },
-    cardGap: 4,
+    card: { x: Math.round(cardH * 1.3) + 10, y: 5, w: cardW, h: cardH },
+    cardGap: 3,
   };
 }
 
@@ -149,270 +130,51 @@ export function hitTest(
   return { kind: "cell", row, col };
 }
 
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  radius: number,
-) {
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, radius);
+function field(l: Layout): Field {
+  return {
+    width: l.width,
+    height: l.height,
+    top: l.barH,
+    left: l.shredW,
+    cellW: l.cellW,
+    cellH: l.cellH,
+    rows: ROWS,
+    cols: COLS,
+  };
 }
 
-// One helper, drawn in a box of size s with its middle at (cx, cy).
-export function drawHelper(
-  ctx: CanvasRenderingContext2D,
-  p: Palette,
-  kind: HelperKind,
-  cx: number,
-  cy: number,
-  s: number,
-  time: number,
-) {
-  const u = s / 10;
-  ctx.save();
-  ctx.lineWidth = Math.max(1, u * 0.5);
-  switch (kind) {
-    case "coffee": {
-      ctx.fillStyle = p["note-foreground"];
-      roundRect(ctx, cx - 3 * u, cy - 2 * u, 5 * u, 5.5 * u, u);
-      ctx.fill();
-      ctx.strokeStyle = p["note-foreground"];
-      ctx.lineWidth = u;
-      ctx.beginPath();
-      ctx.arc(cx + 2.4 * u, cy + 0.6 * u, 1.4 * u, -Math.PI / 2, Math.PI / 2);
-      ctx.stroke();
-      ctx.fillStyle = p.note;
-      ctx.fillRect(cx - 2.2 * u, cy - 1.2 * u, 3.4 * u, 0.8 * u);
-      ctx.strokeStyle = p["muted-foreground"];
-      ctx.lineWidth = Math.max(1, u * 0.4);
-      for (let i = 0; i < 2; i++) {
-        const sway = Math.sin(time * 3 + i) * 0.5 * u;
-        ctx.beginPath();
-        ctx.moveTo(cx - u + i * 1.6 * u, cy - 2.6 * u);
-        ctx.quadraticCurveTo(
-          cx - u + i * 1.6 * u + sway,
-          cy - 3.6 * u,
-          cx - u + i * 1.6 * u,
-          cy - 4.4 * u,
-        );
-        ctx.stroke();
-      }
-      break;
-    }
-    case "stapler": {
-      ctx.fillStyle = p["secondary-foreground"];
-      roundRect(ctx, cx - 4 * u, cy + 1 * u, 8 * u, 2 * u, u * 0.6);
-      ctx.fill();
-      ctx.fillStyle = p.primary;
-      roundRect(ctx, cx - 4 * u, cy - 1.6 * u, 8.4 * u, 2.4 * u, u);
-      ctx.fill();
-      ctx.fillStyle = p.foreground;
-      ctx.beginPath();
-      ctx.arc(cx - 3.2 * u, cy + 0.2 * u, 1 * u, 0, Math.PI * 2);
-      ctx.fill();
-      break;
-    }
-    case "firewall": {
-      ctx.fillStyle = p["destructive-soft"];
-      roundRect(ctx, cx - 3.5 * u, cy - 4 * u, 7 * u, 8 * u, u * 0.6);
-      ctx.fill();
-      ctx.strokeStyle = p["destructive-soft-foreground"];
-      ctx.stroke();
-      for (let i = 1; i < 4; i++) {
-        const y = cy - 4 * u + i * 2 * u;
-        ctx.beginPath();
-        ctx.moveTo(cx - 3.5 * u, y);
-        ctx.lineTo(cx + 3.5 * u, y);
-        ctx.stroke();
-        const off = i % 2 === 0 ? 0 : 1.75 * u;
-        ctx.beginPath();
-        ctx.moveTo(cx - off, y);
-        ctx.lineTo(cx - off, y - 2 * u);
-        ctx.stroke();
-      }
-      break;
-    }
-    case "fan": {
-      ctx.fillStyle = p["secondary-foreground"];
-      ctx.fillRect(cx - 0.4 * u, cy, 0.8 * u, 4 * u);
-      roundRect(ctx, cx - 2.5 * u, cy + 3.4 * u, 5 * u, u, u * 0.4);
-      ctx.fill();
-      ctx.strokeStyle = p["chart-2"];
-      ctx.beginPath();
-      ctx.arc(cx, cy - 1 * u, 3.2 * u, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = p["chart-3"];
-      for (let i = 0; i < 3; i++) {
-        const a = time * 6 + (i * Math.PI * 2) / 3;
-        ctx.beginPath();
-        ctx.ellipse(
-          cx + Math.cos(a) * 1.5 * u,
-          cy - u + Math.sin(a) * 1.5 * u,
-          1.5 * u,
-          0.8 * u,
-          a,
-          0,
-          Math.PI * 2,
-        );
-        ctx.fill();
-      }
-      break;
-    }
-    case "printer": {
-      ctx.fillStyle = p.card;
-      ctx.strokeStyle = p["muted-foreground"];
-      ctx.fillRect(cx - 2 * u, cy - 4 * u, 4 * u, 3 * u);
-      ctx.strokeRect(cx - 2 * u, cy - 4 * u, 4 * u, 3 * u);
-      ctx.fillStyle = p["chart-muted"];
-      roundRect(ctx, cx - 4 * u, cy - 1.5 * u, 8 * u, 4.5 * u, u);
-      ctx.fill();
-      ctx.fillStyle = p.card;
-      ctx.fillRect(cx - 2.5 * u, cy + 1.6 * u, 5 * u, 0.6 * u);
-      ctx.fillStyle = p.success;
-      ctx.beginPath();
-      ctx.arc(cx + 2.8 * u, cy - 0.4 * u, 0.5 * u, 0, Math.PI * 2);
-      ctx.fill();
-      break;
-    }
-    case "eraser": {
-      ctx.translate(cx, cy);
-      ctx.rotate(-0.3);
-      ctx.fillStyle = p["destructive-soft-border"];
-      roundRect(ctx, -4 * u, -2 * u, 5 * u, 4 * u, u * 0.6);
-      ctx.fill();
-      ctx.fillStyle = p.primary;
-      roundRect(ctx, 0.6 * u, -2 * u, 3.4 * u, 4 * u, u * 0.6);
-      ctx.fill();
-      break;
-    }
-  }
-  ctx.restore();
+// The middle of a spot on the desk, in pixels. x is in cells from the left
+// edge of the desk, so a critter at x = 3.5 stands in the middle of col 3.
+export function cellPoint(l: Layout, row: number, x: number) {
+  return { x: l.shredW + x * l.cellW, y: l.barH + (row + 0.5) * l.cellH };
 }
 
-function bugColor(p: Palette, kind: BugKind): string {
-  switch (kind) {
-    case "bug":
-      return p["success-foreground"];
-    case "spam":
-      return p["warning-foreground"];
-    case "virus":
-      return p["accent-strong"];
-    case "phish":
-      return p["chart-2"];
-    case "trojan":
-      return p.foreground;
-    case "ransom":
-      return p.destructive;
-  }
+export function energyPoint(l: Layout) {
+  return { x: 6 + (l.card.x - 12) * 0.3, y: l.card.y + l.card.h * 0.5 };
 }
 
-function drawBug(
-  ctx: CanvasRenderingContext2D,
-  p: Palette,
-  bug: Bug,
-  cx: number,
-  cy: number,
-  s: number,
-  time: number,
-  still: boolean,
-) {
-  const big = bug.kind === "ransom" ? 1.5 : bug.kind === "trojan" ? 1.15 : 1;
-  const u = (s / 10) * big;
-  const walk =
-    still || bug.chewing ? 0 : Math.sin(time * 12 + bug.id) * 0.6 * u;
-  const chew = bug.chewing && !still ? Math.sin(time * 20) * 0.4 * u : 0;
-  const color = bug.flash > 0 ? p.card : bugColor(p, bug.kind);
-  ctx.save();
-  ctx.translate(cx + chew, cy);
+export function fxPlace(l: Layout): Place {
+  return {
+    cell: (row, x) => cellPoint(l, row, x),
+    size: Math.min(l.cellW, l.cellH) * 0.92,
+    cellW: l.cellW,
+    cellH: l.cellH,
+    energy: energyPoint(l),
+    width: l.width,
+  };
+}
 
-  ctx.strokeStyle = p.foreground;
-  ctx.lineWidth = Math.max(1, u * 0.35);
-  for (let i = -1; i <= 1; i++) {
-    const swing = i === 0 ? -walk : walk;
-    ctx.beginPath();
-    ctx.moveTo(i * 1.4 * u, 0);
-    ctx.lineTo(i * 1.8 * u + swing, 2.8 * u);
-    ctx.moveTo(i * 1.4 * u, 0);
-    ctx.lineTo(i * 1.8 * u - swing, -2.8 * u);
-    ctx.stroke();
-  }
-
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.ellipse(0.4 * u, 0, 3 * u, 2.2 * u, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(-2.6 * u, 0, 1.5 * u, 0, Math.PI * 2);
-  ctx.fill();
-
-  if (bug.kind === "trojan") {
-    ctx.fillStyle = p["chart-muted"];
-    roundRect(ctx, -0.6 * u, -1.6 * u, 3 * u, 3.2 * u, u * 0.5);
-    ctx.fill();
-  }
-  if (bug.kind === "phish") {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(3 * u, 0);
-    ctx.lineTo(4.6 * u, -1.6 * u);
-    ctx.lineTo(4.6 * u, 1.6 * u);
-    ctx.fill();
-  }
-  if (bug.kind === "ransom") {
-    ctx.strokeStyle = p.card;
-    ctx.lineWidth = Math.max(1, u * 0.4);
-    ctx.beginPath();
-    ctx.arc(0.6 * u, -0.6 * u, 0.8 * u, Math.PI, 0);
-    ctx.stroke();
-    ctx.fillStyle = p.card;
-    ctx.fillRect(-0.4 * u, -0.6 * u, 2 * u, 1.6 * u);
-  }
-  if (bug.kind === "virus") {
-    ctx.fillStyle = color;
-    for (let i = 0; i < 6; i++) {
-      const a = (i * Math.PI) / 3;
-      ctx.beginPath();
-      ctx.arc(
-        0.4 * u + Math.cos(a) * 2.8 * u,
-        Math.sin(a) * 2.2 * u,
-        0.5 * u,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fill();
-    }
-  }
-
-  // Eyes, and two feelers.
-  ctx.fillStyle = p.card;
-  ctx.beginPath();
-  ctx.arc(-3 * u, -0.6 * u, 0.55 * u, 0, Math.PI * 2);
-  ctx.arc(-3 * u, 0.6 * u, 0.55 * u, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = p.foreground;
-  ctx.beginPath();
-  ctx.moveTo(-3.8 * u, -0.8 * u);
-  ctx.lineTo(-5 * u, -2 * u);
-  ctx.moveTo(-3.8 * u, 0.8 * u);
-  ctx.lineTo(-5 * u, 2 * u);
-  ctx.stroke();
-
-  if (bug.slowFor > 0) {
-    ctx.strokeStyle = p["chart-3"];
-    ctx.lineWidth = Math.max(1, u * 0.5);
-    ctx.beginPath();
-    ctx.ellipse(0, 0, 4.4 * u, 3.2 * u, 0, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  ctx.restore();
+export interface View {
+  // Real seconds, for wiggles and blinks.
+  t: number;
+  still: boolean;
+  ratio: number;
+  fx: Fx;
+  showCursor: boolean;
 }
 
 function healthBar(
   ctx: CanvasRenderingContext2D,
-  p: Palette,
   x: number,
   y: number,
   w: number,
@@ -420,10 +182,12 @@ function healthBar(
   good: boolean,
 ) {
   if (share >= 1) return;
-  ctx.fillStyle = p.border;
-  ctx.fillRect(x, y, w, 3);
-  ctx.fillStyle = good ? p["success-foreground"] : p.destructive;
-  ctx.fillRect(x, y, w * Math.max(0, share), 3);
+  rounded(ctx, x, y, w, 4, 2);
+  ctx.fillStyle = hsl(ART.ink, 0, 0.45);
+  ctx.fill();
+  rounded(ctx, x, y, w * Math.max(0, share), 4, 2);
+  ctx.fillStyle = good ? hsl(ART.hopper, 5) : hsl(ART.ember, 8);
+  ctx.fill();
 }
 
 export function drawRound(
@@ -431,205 +195,142 @@ export function drawRound(
   p: Palette,
   l: Layout,
   r: Round,
-  // Real seconds, for wiggles. Stands still when motion is reduced.
-  time: number,
-  still: boolean,
-  showCursor: boolean,
+  view: View,
 ) {
-  const wiggle = still ? 0 : time;
+  const { t, still } = view;
+  const size = Math.min(l.cellW, l.cellH) * 0.92;
   ctx.clearRect(0, 0, l.width, l.height);
-  ctx.fillStyle = p.card;
-  ctx.fillRect(0, 0, l.width, l.height);
+  drawDesk(ctx, field(l), r.level.rows, view.ratio);
 
-  // The desk: one row per lane, closed rows greyed out.
-  for (let row = 0; row < ROWS; row++) {
-    const y = l.barH + row * l.cellH;
-    const open = r.level.rows.includes(row);
-    for (let col = 0; col < COLS; col++) {
-      const x = l.shredW + col * l.cellW;
-      ctx.fillStyle = open ? p.card : p.muted;
-      ctx.fillRect(x, y, l.cellW + 0.5, l.cellH + 0.5);
-      if (open) {
-        // A soft teal checkerboard, so each cell reads as a place to build.
-        ctx.globalAlpha = (row + col) % 2 === 0 ? 0.75 : 0.4;
-        ctx.fillStyle = p.accent;
-        ctx.fillRect(x, y, l.cellW + 0.5, l.cellH + 0.5);
-        ctx.globalAlpha = 1;
-      }
-    }
-    if (!open) {
-      // Closed rows get a light hatch, so they do not look like desk.
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(l.shredW, y, l.width - l.shredW, l.cellH);
-      ctx.clip();
-      ctx.strokeStyle = p.border;
-      ctx.lineWidth = 1;
-      for (let x = l.shredW - l.cellH; x < l.width; x += 10) {
-        ctx.beginPath();
-        ctx.moveTo(x, y + l.cellH);
-        ctx.lineTo(x + l.cellH, y);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-    ctx.fillStyle = p.muted;
-    ctx.fillRect(0, y, l.shredW, l.cellH);
-    if (open && r.shredders[row]) {
-      ctx.fillStyle = p["secondary-foreground"];
-      roundRect(ctx, 3, y + l.cellH * 0.3, l.shredW - 6, l.cellH * 0.4, 3);
-      ctx.fill();
-      ctx.fillStyle = p.warning;
-      ctx.fillRect(5, y + l.cellH * 0.45, l.shredW - 10, l.cellH * 0.1);
-    }
+  // Shredders waiting at the left end of open rows.
+  for (const row of r.level.rows) {
+    if (!r.shredders[row]) continue;
+    const at = cellPoint(l, row, 0);
+    drawShredder(ctx, l.shredW / 2, at.y, l.cellH, false, t);
   }
-  ctx.strokeStyle = p.border;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, l.barH + 0.5);
-  ctx.lineTo(l.width, l.barH + 0.5);
-  ctx.stroke();
-
-  const size = Math.min(l.cellW, l.cellH) * 0.9;
-  const cellMid = (row: number, col: number) => ({
-    x: l.shredW + (col + 0.5) * l.cellW,
-    y: l.barH + (row + 0.5) * l.cellH,
-  });
 
   // The cursor, with a faint copy of the chosen helper where it would go.
-  if (showCursor) {
-    const { row, col } = r.cursor;
-    const x = l.shredW + col * l.cellW;
-    const y = l.barH + row * l.cellH;
-    const sel = r.selected;
-    const ok =
-      sel === "remove"
-        ? Boolean(helperAt(r, row, col))
-        : canPlace(r, sel, row, col) === "placed";
-    if (sel && sel !== "remove" && !helperAt(r, row, col)) {
-      const mid = cellMid(row, col);
-      ctx.globalAlpha = 0.35;
-      drawHelper(ctx, p, sel, mid.x, mid.y, size, wiggle);
-      ctx.globalAlpha = 1;
+  if (view.showCursor) drawCursor(ctx, p, l, r, size, t);
+
+  // Row by row, top to bottom, so lower things overlap higher ones.
+  const critters = [...r.critters].sort((a, b) => a.row - b.row || b.x - a.x);
+  for (let row = 0; row < ROWS; row++) {
+    for (const h of r.helpers) {
+      if (h.row !== row) continue;
+      const at = cellPoint(l, row, h.col + 0.5);
+      drawHelper(ctx, h.kind, at.x, at.y, size, lookOf(h, t, still));
+      if (HELPERS[h.kind].hp < 9999) {
+        healthBar(
+          ctx,
+          at.x - size * 0.3,
+          at.y + size * 0.42,
+          size * 0.6,
+          h.hp / h.maxHp,
+          true,
+        );
+      }
     }
-    ctx.strokeStyle = ok ? p.ring : p.destructive;
-    ctx.lineWidth = 2;
-    roundRect(ctx, x + 2, y + 2, l.cellW - 4, l.cellH - 4, 6);
-    ctx.stroke();
-  }
-
-  for (const h of r.helpers) drawPlaced(ctx, p, l, h, size, wiggle, cellMid);
-
-  for (const shot of r.shots) {
-    const x = l.shredW + shot.x * l.cellW;
-    const y = l.barH + (shot.row + 0.5) * l.cellH - size * 0.1;
-    ctx.fillStyle = shot.slows ? p["chart-3"] : p.foreground;
-    if (shot.slows) {
-      ctx.beginPath();
-      ctx.arc(x, y, size * 0.07, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.fillRect(x - size * 0.08, y - 1.5, size * 0.16, 3);
-    }
-  }
-
-  const bugs = [...r.bugs].sort((a, b) => a.row - b.row);
-  for (const bug of bugs) {
-    const x = l.shredW + bug.x * l.cellW;
-    const y = l.barH + (bug.row + 0.5) * l.cellH;
-    drawBug(ctx, p, bug, x, y, size, wiggle, still);
-    healthBar(
-      ctx,
-      p,
-      x - size * 0.3,
-      y - size * 0.45,
-      size * 0.6,
-      bug.hp / bug.maxHp,
-      false,
-    );
-  }
-
-  for (const e of r.effects) {
-    const y = l.barH + (e.row + 0.5) * l.cellH;
-    const x = l.shredW + e.x * l.cellW;
-    if (e.kind === "energy") {
-      ctx.globalAlpha = Math.max(0, 1 - e.age);
-      ctx.fillStyle = p["warning-foreground"];
-      ctx.font = `600 ${Math.round(size * 0.28)}px ${p.font}`;
-      ctx.textAlign = "center";
-      ctx.fillText("+25", x, y - size * 0.4 - (still ? 0 : e.age * 14));
-      ctx.globalAlpha = 1;
-    } else if (e.kind === "burst") {
-      ctx.globalAlpha = Math.max(0, 1 - e.age * 2);
-      ctx.fillStyle = p["destructive-soft-border"];
-      ctx.beginPath();
-      const grow = still ? 1 : 0.5 + e.age;
-      ctx.ellipse(
-        x,
-        y,
-        l.cellW * 1.6 * grow,
-        l.cellH * 1.4 * grow,
-        0,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    } else {
-      ctx.fillStyle = p["secondary-foreground"];
-      roundRect(
+    for (const c of critters) {
+      if (c.row !== row) continue;
+      const at = cellPoint(l, row, c.x);
+      drawCritter(ctx, c, at.x, at.y, size * 0.9, {
+        t,
+        still,
+        ratio: view.ratio,
+      });
+      const share = (c.hp + c.armor) / (c.maxHp + c.maxArmor);
+      healthBar(
         ctx,
-        x - l.cellW * 0.4,
-        y - l.cellH * 0.3,
-        l.cellW * 0.8,
-        l.cellH * 0.6,
-        4,
+        at.x - size * 0.28,
+        at.y - size * 0.62,
+        size * 0.56,
+        share,
+        false,
       );
-      ctx.fill();
-      ctx.fillStyle = p.warning;
-      ctx.fillRect(x + l.cellW * 0.3, y - l.cellH * 0.3, 3, l.cellH * 0.6);
+    }
+    for (const shot of r.shots) {
+      if (shot.row !== row) continue;
+      const at = cellPoint(l, row, shot.x);
+      drawShot(ctx, shot, at.x, at.y - size * 0.12, size, t);
     }
   }
 
-  drawBar(ctx, p, l, r);
+  for (const s of r.shreds) {
+    const at = cellPoint(l, s.row, s.x);
+    drawShredder(ctx, at.x, at.y, l.cellH, true, t);
+  }
+
+  view.fx.draw(ctx, p.font);
+  drawBar(ctx, p, l, r, view);
 }
 
-function drawPlaced(
+function drawCursor(
   ctx: CanvasRenderingContext2D,
   p: Palette,
   l: Layout,
-  h: Helper,
+  r: Round,
   size: number,
-  time: number,
-  cellMid: (row: number, col: number) => { x: number; y: number },
+  t: number,
 ) {
-  const mid = cellMid(h.row, h.col);
-  drawHelper(ctx, p, h.kind, mid.x, mid.y, size, time);
-  if (h.kind === "eraser") {
-    // A ring that closes as the eraser gets ready to wipe.
-    const share = 1 - Math.max(0, h.timer) / HELPERS.eraser.every;
-    ctx.strokeStyle = p.destructive;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(
-      mid.x,
-      mid.y,
-      size * 0.45,
-      -Math.PI / 2,
-      -Math.PI / 2 + share * Math.PI * 2,
-    );
-    ctx.stroke();
-    return;
+  const { row, col } = r.cursor;
+  const x = l.shredW + col * l.cellW;
+  const y = l.barH + row * l.cellH;
+  const sel = r.selected;
+  const taken = Boolean(helperAt(r, row, col));
+  const ok = sel === "remove" ? taken : canPlace(r, sel, row, col) === "placed";
+  rounded(ctx, x + 2, y + 2, l.cellW - 4, l.cellH - 4, 8);
+  ctx.fillStyle = hsl(ok ? ART.white : ART.ember, 0, 0.22);
+  ctx.fill();
+  if (sel && sel !== "remove" && !taken) {
+    ctx.globalAlpha = 0.45;
+    const at = cellPoint(l, row, col + 0.5);
+    drawHelper(ctx, sel, at.x, at.y, size, { ...RESTING, t }, false);
+    ctx.globalAlpha = 1;
   }
-  healthBar(
-    ctx,
-    p,
-    mid.x - size * 0.35,
-    mid.y + size * 0.42,
-    size * 0.7,
-    h.hp / h.maxHp,
-    true,
-  );
+  rounded(ctx, x + 2, y + 2, l.cellW - 4, l.cellH - 4, 8);
+  ctx.strokeStyle = ok ? p.ring : p.destructive;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+}
+
+// Card pictures are the same every frame, so each is drawn once and kept.
+const cardArt = new Map<string, HTMLCanvasElement>();
+
+function cardPicture(kind: HelperKind, w: number, h: number, ratio: number) {
+  const key = `${kind}:${w}x${h}:${ratio}`;
+  let canvas = cardArt.get(key);
+  if (!canvas) {
+    canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(w * ratio);
+    canvas.height = Math.ceil(h * ratio);
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.scale(ratio, ratio);
+      // Helpers stand on the floor of their box and rise about half their
+      // size above its middle, so place them to fit the whole picture.
+      const s = Math.min(h * 0.92, w * 0.95);
+      drawHelper(ctx, kind, w / 2, h * 0.55, s, RESTING, false);
+    }
+    if (cardArt.size > 40) cardArt.clear();
+    cardArt.set(key, canvas);
+  }
+  return canvas;
+}
+
+function bolt(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + s * 0.15, y - s * 0.5);
+  ctx.lineTo(x - s * 0.3, y + s * 0.08);
+  ctx.lineTo(x, y + s * 0.08);
+  ctx.lineTo(x - s * 0.15, y + s * 0.5);
+  ctx.lineTo(x + s * 0.3, y - s * 0.1);
+  ctx.lineTo(x, y - s * 0.1);
+  ctx.closePath();
+  ctx.fillStyle = hsl(ART.gold, 0);
+  ctx.fill();
+  ctx.strokeStyle = hsl(ART.ink, 0, 0.6);
+  ctx.lineWidth = Math.max(1, s * 0.07);
+  ctx.stroke();
 }
 
 function drawBar(
@@ -637,36 +338,42 @@ function drawBar(
   p: Palette,
   l: Layout,
   r: Round,
+  view: View,
 ) {
-  // Energy, at the left.
+  ctx.fillStyle = p.card;
+  ctx.fillRect(0, 0, l.width, l.barH);
+  ctx.fillStyle = p.border;
+  ctx.fillRect(0, l.barH - 1, l.width, 1);
+
+  // Energy, at the left, with a bolt. It swells as an orb lands.
   const ex = 6;
   const ew = l.card.x - 12;
+  const swell = view.fx.pulse > 0 ? 1 + view.fx.pulse * 0.4 : 1;
+  rounded(ctx, ex, l.card.y, ew, l.card.h, 10);
   ctx.fillStyle = p.warning;
-  roundRect(ctx, ex, l.card.y, ew, l.card.h, 8);
   ctx.fill();
   ctx.strokeStyle = p["warning-border"];
   ctx.lineWidth = 1;
   ctx.stroke();
+  const e = energyPoint(l);
+  bolt(ctx, e.x, e.y, l.card.h * 0.5 * swell);
   ctx.fillStyle = p["warning-foreground"];
   ctx.textAlign = "center";
-  ctx.font = `600 ${Math.round(l.card.h * 0.2)}px ${p.font}`;
-  ctx.fillText("Energy", ex + ew / 2, l.card.y + l.card.h * 0.36);
-  ctx.font = `700 ${Math.round(l.card.h * 0.34)}px ${p.font}`;
+  ctx.font = `700 ${Math.round(l.card.h * 0.34 * swell)}px ${p.font}`;
   ctx.fillText(
     String(Math.floor(r.energy)),
-    ex + ew / 2,
-    l.card.y + l.card.h * 0.8,
+    ex + ew * 0.66,
+    l.card.y + l.card.h * 0.62,
   );
 
-  // The cards.
   const list = tools(r);
   list.forEach((tool, i) => {
     const c = cardRect(l, i);
     const chosen = r.selected === tool;
     const def = tool === "remove" ? null : HELPERS[tool];
     const ready = !def || (r.energy >= def.cost && r.cooldowns[def.kind] <= 0);
-    ctx.fillStyle = chosen ? p.accent : p.card;
-    roundRect(ctx, c.x, c.y, c.w, c.h, 8);
+    rounded(ctx, c.x, c.y, c.w, c.h, 8);
+    ctx.fillStyle = chosen ? p.accent : p.background;
     ctx.fill();
     ctx.strokeStyle = chosen ? p.primary : p.border;
     ctx.lineWidth = chosen ? 2 : 1;
@@ -674,25 +381,25 @@ function drawBar(
 
     ctx.globalAlpha = ready ? 1 : 0.4;
     if (def) {
-      drawHelper(
-        ctx,
-        p,
-        def.kind,
-        c.x + c.w / 2,
-        c.y + c.h * 0.42,
-        c.h * 0.55,
-        0,
+      const picH = c.h * 0.72;
+      ctx.drawImage(
+        cardPicture(def.kind, c.w, picH, view.ratio),
+        c.x,
+        c.y,
+        c.w,
+        picH,
       );
       ctx.fillStyle = p.foreground;
-      ctx.font = `600 ${Math.round(c.h * 0.2)}px ${p.font}`;
+      ctx.font = `700 ${Math.round(c.h * 0.21)}px ${p.font}`;
       ctx.textAlign = "center";
       ctx.fillText(String(def.cost), c.x + c.w / 2, c.y + c.h - 4);
     } else {
       ctx.strokeStyle = p["destructive-soft-foreground"];
-      ctx.lineWidth = 2;
-      const m = c.h * 0.16;
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = "round";
+      const m = c.h * 0.14;
       const cx = c.x + c.w / 2;
-      const cy = c.y + c.h * 0.42;
+      const cy = c.y + c.h * 0.4;
       ctx.beginPath();
       ctx.moveTo(cx - m, cy - m);
       ctx.lineTo(cx + m, cy + m);
@@ -700,24 +407,27 @@ function drawBar(
       ctx.lineTo(cx - m, cy + m);
       ctx.stroke();
       ctx.fillStyle = p.foreground;
-      ctx.font = `600 ${Math.round(c.h * 0.18)}px ${p.font}`;
+      ctx.font = `600 ${Math.round(c.h * 0.17)}px ${p.font}`;
       ctx.textAlign = "center";
       ctx.fillText("Remove", cx, c.y + c.h - 4);
     }
     ctx.globalAlpha = 1;
 
-    // The card refills from the bottom while it recharges.
+    // The card refills from the top while it recharges.
     if (def && r.cooldowns[def.kind] > 0) {
       const share = r.cooldowns[def.kind] / (def.recharge * r.boosts.recharge);
+      ctx.save();
+      rounded(ctx, c.x, c.y, c.w, c.h, 8);
+      ctx.clip();
       ctx.fillStyle = p.foreground;
-      ctx.globalAlpha = 0.18;
-      ctx.fillRect(c.x + 1, c.y + 1, c.w - 2, (c.h - 2) * share);
-      ctx.globalAlpha = 1;
+      ctx.globalAlpha = 0.22;
+      ctx.fillRect(c.x, c.y, c.w, c.h * share);
+      ctx.restore();
     }
 
     // The key that picks the card.
     ctx.fillStyle = p["muted-foreground"];
-    ctx.font = `600 ${Math.round(c.h * 0.17)}px ${p.font}`;
+    ctx.font = `700 ${Math.round(c.h * 0.17)}px ${p.font}`;
     ctx.textAlign = "left";
     ctx.fillText(
       tool === "remove" ? "X" : String(i + 1),
@@ -726,35 +436,92 @@ function drawBar(
     );
   });
 
-  // How far through the level, at the right, with a flag for the big wave.
+  // How far through the level, at the right, with a fuzzball marching
+  // along it and a flag for the big wave.
   const last = cardRect(l, list.length - 1);
-  const px = last.x + last.w + 12;
-  const pw = l.width - px - 8;
+  const px = last.x + last.w + 10;
+  const pw = l.width - px - 10;
   if (pw < 40) return;
   ctx.fillStyle = p.foreground;
   ctx.textAlign = "left";
-  ctx.font = `600 ${Math.round(l.card.h * 0.22)}px ${p.font}`;
-  ctx.fillText(`Level ${r.level.number}`, px, l.card.y + l.card.h * 0.3, pw);
+  ctx.font = `700 ${Math.round(l.card.h * 0.22)}px ${p.font}`;
+  ctx.fillText(`Level ${r.level.number}`, px, l.card.y + l.card.h * 0.28, pw);
   ctx.fillStyle = p["muted-foreground"];
-  ctx.font = `400 ${Math.round(l.card.h * 0.19)}px ${p.font}`;
-  ctx.fillText(r.level.name, px, l.card.y + l.card.h * 0.56, pw);
-  const by = l.card.y + l.card.h * 0.74;
+  ctx.font = `500 ${Math.round(l.card.h * 0.18)}px ${p.font}`;
+  ctx.fillText(r.level.name, px, l.card.y + l.card.h * 0.52, pw);
+  const by = l.card.y + l.card.h * 0.78;
+  rounded(ctx, px, by - 3, pw, 6, 3);
   ctx.fillStyle = p.border;
-  roundRect(ctx, px, by, pw, 6, 3);
   ctx.fill();
+  const share = Math.min(1, progress(r));
+  rounded(ctx, px, by - 3, Math.max(6, pw * share), 6, 3);
   ctx.fillStyle = p.primary;
-  roundRect(ctx, px, by, Math.max(6, pw * Math.min(1, progress(r))), 6, 3);
   ctx.fill();
   const total = r.level.spawns.length;
   const firstBig = r.level.spawns.findIndex((s) => s.at >= r.level.bigWaveAt);
   if (firstBig > 0 && total > 0) {
     const fx = px + (pw * firstBig) / total;
-    ctx.fillStyle = p.destructive;
-    ctx.fillRect(fx, by - 6, 1.5, 12);
+    ctx.fillStyle = p.foreground;
+    ctx.fillRect(fx, by - 10, 1.5, 12);
     ctx.beginPath();
-    ctx.moveTo(fx + 1.5, by - 6);
-    ctx.lineTo(fx + 7, by - 3.5);
-    ctx.lineTo(fx + 1.5, by - 1);
+    ctx.moveTo(fx + 1.5, by - 10);
+    ctx.lineTo(fx + 8, by - 7);
+    ctx.lineTo(fx + 1.5, by - 4);
+    ctx.fillStyle = p.destructive;
     ctx.fill();
   }
+  const head = furSprite("fuzzball", l.card.h * 0.34, view.ratio, false);
+  if (head) {
+    const hx = px + pw * share;
+    ctx.drawImage(
+      head.canvas,
+      hx - head.half,
+      by - head.half,
+      head.half * 2,
+      head.half * 2,
+    );
+    ctx.fillStyle = hsl(ART.ink);
+    ellipse(
+      ctx,
+      hx - head.half * 0.25,
+      by - head.half * 0.1,
+      head.half * 0.09,
+      head.half * 0.11,
+    );
+    ctx.fill();
+    ellipse(
+      ctx,
+      hx + head.half * 0.08,
+      by - head.half * 0.1,
+      head.half * 0.09,
+      head.half * 0.11,
+    );
+    ctx.fill();
+  }
+}
+
+// A single critter or helper, for the menus and the level cards.
+export function drawPortrait(
+  ctx: CanvasRenderingContext2D,
+  thing:
+    | { type: "helper"; kind: HelperKind }
+    | { type: "critter"; kind: CritterKind },
+  w: number,
+  h: number,
+  ratio: number,
+  t: number,
+) {
+  ctx.clearRect(0, 0, w, h);
+  const s = Math.min(w, h) * 0.78;
+  if (thing.type === "helper") {
+    drawHelper(ctx, thing.kind, w / 2, h / 2 - s * 0.05, s, { ...RESTING, t });
+    return;
+  }
+  const c = sampleCritter(thing.kind);
+  const scale = Math.max(1.2, CRITTERS[thing.kind].scale);
+  drawCritter(ctx, c, w / 2, h / 2 + s * 0.1, s / scale, {
+    t,
+    still: true,
+    ratio,
+  });
 }

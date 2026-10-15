@@ -8,13 +8,18 @@ import {
   ShoppingBag,
   Trophy,
 } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 import { cn } from "@dcb/ui";
 import { Button } from "@dcb/ui/button";
 
 import type { Player } from "~/mock/game-scores";
+import { drawPortrait } from "~/games/desk-defense/draw";
 import { HOST } from "~/games/desk-defense/guide";
+import type { NewThing } from "~/games/desk-defense/levels";
 import { LEVEL_COUNT, buildLevel, newIn } from "~/games/desk-defense/levels";
+import type { CritterKind, HelperKind } from "~/games/desk-defense/units";
+import { CRITTERS, HELPERS } from "~/games/desk-defense/units";
 import type { Progress } from "~/games/desk-defense/progress";
 import { leaderboard, totalScore } from "~/games/desk-defense/progress";
 import type { UpgradeId } from "~/games/desk-defense/upgrades";
@@ -23,6 +28,60 @@ import { UPGRADES, nextCost } from "~/games/desk-defense/upgrades";
 // The screens around a round: the start screen with the top five, the
 // level list, a level's card, the upgrade shop and the end of a round.
 // Each one fills the game's box and scrolls inside it when it must.
+
+type Thing =
+  | { type: "helper"; kind: HelperKind }
+  | { type: "critter"; kind: CritterKind };
+
+// One critter or helper, drawn once into a small canvas.
+export function Portrait({
+  thing,
+  className,
+}: {
+  thing: Thing;
+  className?: string;
+}) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.round(rect.width * ratio));
+    canvas.height = Math.max(1, Math.round(rect.height * ratio));
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    drawPortrait(ctx, thing, rect.width, rect.height, ratio, 0);
+  }, [thing]);
+  return (
+    <canvas
+      ref={ref}
+      aria-hidden
+      className={cn("size-12 shrink-0", className)}
+    />
+  );
+}
+
+const TITLE_CREW: Thing[] = [
+  { type: "helper", kind: "stapler" },
+  { type: "critter", kind: "fuzzball" },
+  { type: "critter", kind: "zippy" },
+  { type: "critter", kind: "chonk" },
+  { type: "critter", kind: "shellby" },
+];
+
+function thingWords(thing: NewThing) {
+  if (thing.type === "helper") {
+    const def = HELPERS[thing.kind];
+    return { label: "New helper", name: def.name, words: def.special };
+  }
+  const def = CRITTERS[thing.kind];
+  return {
+    label: thing.boss ? "Boss" : "New critter",
+    name: def.name,
+    words: def.blurb,
+  };
+}
 
 function CoinCount({ coins }: { coins: number }) {
   return (
@@ -121,8 +180,13 @@ export function TitleScreen({
         <div>
           <h3 className="type-label text-base">Desk Defense</h3>
           <p className="type-caption">
-            Stop the bugs before they cross your desk.
+            Stop the critters before they cross your desk.
           </p>
+        </div>
+        <div className="-my-1 flex items-end">
+          {TITLE_CREW.map((thing) => (
+            <Portrait key={thing.kind} thing={thing} className="size-11" />
+          ))}
         </div>
         <div className="flex items-center gap-3">
           <CoinCount coins={progress.coins} />
@@ -151,7 +215,7 @@ export function TitleScreen({
           </Button>
         </div>
         <p className="type-caption mt-auto">
-          Arrow keys move, 1 to 6 pick, Enter places. Esc leaves.
+          Arrow keys move, number keys pick, Enter places. Esc leaves.
         </p>
       </div>
       <TopFive player={player} />
@@ -219,7 +283,7 @@ export function IntroScreen({
       <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
         <p className="type-label text-base">{level.name}</p>
         <p className="type-caption">
-          {level.spawns.length} bugs on {level.rows.length}{" "}
+          {level.spawns.length} critters on {level.rows.length}{" "}
           {level.rows.length === 1 ? "row" : "rows"}.
           {best ? ` Your best: ${best.toLocaleString()}.` : ""}
         </p>
@@ -229,15 +293,23 @@ export function IntroScreen({
           </p>
         )}
         {news.length > 0 && (
-          <ul className="flex flex-wrap justify-center gap-1.5">
-            {news.map((line) => (
-              <li
-                key={line}
-                className="type-caption bg-accent text-foreground rounded-md px-2 py-0.5"
-              >
-                {line}
-              </li>
-            ))}
+          <ul className="flex flex-wrap justify-center gap-2">
+            {news.map((thing) => {
+              const w = thingWords(thing);
+              return (
+                <li
+                  key={`${thing.type}-${thing.kind}`}
+                  className="bg-accent flex max-w-60 items-center gap-2 rounded-lg p-1.5 pr-3 text-left"
+                >
+                  <Portrait thing={thing} />
+                  <div className="min-w-0">
+                    <p className="type-caption font-medium">{w.label}</p>
+                    <p className="type-label">{w.name}</p>
+                    <p className="type-caption">{w.words}</p>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
         <Button size="xs" className="mt-2" onClick={onStart} autoFocus>
@@ -262,7 +334,7 @@ export function ShopScreen({
     <div className="flex h-full flex-col gap-2 overflow-y-auto p-3">
       <Header title="Upgrades" coins={progress.coins} onBack={onBack} />
       <p className="type-caption">
-        Every bug you stop earns coins. A cleared level earns more.
+        Every critter you stop earns coins. A cleared level earns more.
       </p>
       <ul className="flex flex-col gap-1.5">
         {UPGRADES.map((u) => {
@@ -357,7 +429,7 @@ export function ResultScreen({
             ? last
               ? "You cleared every level!"
               : `Level ${report.level} cleared`
-            : "The bugs got through"}
+            : "The critters got through"}
         </h3>
         <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5">
           <dt className="type-caption">Score</dt>

@@ -1,7 +1,7 @@
-import type { BugKind, HelperKind } from "~/games/desk-defense/units";
+import type { CritterKind, HelperKind } from "~/games/desk-defense/units";
 import {
-  BUG_ORDER,
-  BUGS,
+  CRITTER_ORDER,
+  CRITTERS,
   HELPER_ORDER,
   HELPERS,
   START_ENERGY,
@@ -9,8 +9,8 @@ import {
 
 // Thirty-six levels. Level 1 is the guided one, where Dot, the desk robot,
 // walks the player through a round. After it, each level brings a few more
-// bugs, a little more health on each, and now and then a new helper or a
-// new kind of bug. Levels 10, 20, 30 and 36 end with Ransomware, the boss.
+// critters, a little more health on each, and now and then a new helper or
+// a new kind of critter. Levels 10, 20, 30 and 36 end with Grumble, the boss.
 //
 // Levels are built from a fixed seed, so level 12 is the same round every
 // time and a best score means the same thing for everyone.
@@ -22,17 +22,17 @@ export interface Spawn {
   // Seconds after the round starts.
   at: number;
   row: number;
-  kind: BugKind;
+  kind: CritterKind;
 }
 
 export interface Level {
   number: number;
   name: string;
-  // The rows bugs walk down. The others are shown but closed.
+  // The rows critters walk down. The others are shown but closed.
   rows: number[];
   helpers: HelperKind[];
   startEnergy: number;
-  // Bug health grows a little with every level.
+  // Critter health grows a little with every level.
   hpScale: number;
   spawns: Spawn[];
   // When the last, biggest wave comes, for the progress bar.
@@ -47,12 +47,12 @@ const NAMES = [
   "Inbox zero",
   "Coffee run",
   "Cold snap",
-  "Something viral",
+  "Something fuzzy",
   "Late lunch",
   "Quarter end",
   "The big one",
   "Fresh paper",
-  "Gone phishing",
+  "Hop to it",
   "Reply all",
   "Clean slate",
   "Audit week",
@@ -70,7 +70,7 @@ const NAMES = [
   "Year end",
   "Long weekend",
   "Final notice",
-  "Pay the ransom",
+  "The big grumble",
   "New year",
   "Hard reset",
   "No more coffee",
@@ -93,13 +93,16 @@ function seeded(seed: number) {
   };
 }
 
-const WEIGHTS: Record<BugKind, number> = {
-  bug: 5,
-  spam: 3,
-  virus: 3,
-  phish: 2,
-  trojan: 2,
-  ransom: 0,
+// How often each critter turns up, once it has been met.
+const WEIGHTS: Record<CritterKind, number> = {
+  fuzzball: 5,
+  zippy: 3,
+  chonk: 3,
+  splitter: 2,
+  mini: 0,
+  hopper: 2,
+  shellby: 2,
+  grumble: 0,
 };
 
 const BOSSES: Record<number, number> = { 10: 1, 20: 1, 30: 2, 36: 3 };
@@ -121,7 +124,7 @@ function guidedLevel(): Level {
     spawns: [20, 34, 44, 52, 58, 62].map((at) => ({
       at,
       row: 2,
-      kind: "bug",
+      kind: "fuzzball",
     })),
     bigWaveAt: 58,
     guided: true,
@@ -133,7 +136,7 @@ export function buildLevel(n: number): Level {
   const random = seeded(n * 7919);
   const rows = rowsFor(n);
 
-  // Rows are dealt like cards: each open row gets a bug before any row
+  // Rows are dealt like cards: each open row gets a critter before any row
   // gets a second one. Pure chance can pile half a level into one row.
   let bag: number[] = [];
   const nextRow = (): number => {
@@ -143,17 +146,17 @@ export function buildLevel(n: number): Level {
     return row ?? rows[0] ?? 2;
   };
 
-  const kinds = BUG_ORDER.filter(
-    (k) => WEIGHTS[k] > 0 && BUGS[k].unlockLevel <= n,
+  const kinds = CRITTER_ORDER.filter(
+    (k) => WEIGHTS[k] > 0 && CRITTERS[k].unlockLevel <= n,
   );
   const total = kinds.reduce((sum, k) => sum + WEIGHTS[k], 0);
-  const kindAt = (): BugKind => {
+  const kindAt = (): CritterKind => {
     let roll = random() * total;
     for (const k of kinds) {
       roll -= WEIGHTS[k];
       if (roll <= 0) return k;
     }
-    return "bug";
+    return "fuzzball";
   };
 
   const count = Math.round(5 + n * 0.9);
@@ -174,7 +177,7 @@ export function buildLevel(n: number): Level {
     });
   }
   for (let i = 0; i < (BOSSES[n] ?? 0); i++) {
-    spawns.push({ at: bigWaveAt + 2 + i * 3, row: nextRow(), kind: "ransom" });
+    spawns.push({ at: bigWaveAt + 2 + i * 3, row: nextRow(), kind: "grumble" });
   }
   spawns.sort((a, b) => a.at - b.at);
 
@@ -192,13 +195,19 @@ export function buildLevel(n: number): Level {
 }
 
 // What a level brings that the one before it did not, for the level card.
-export function newIn(n: number): string[] {
+export type NewThing =
+  | { type: "helper"; kind: HelperKind }
+  | { type: "critter"; kind: CritterKind; boss: boolean };
+
+export function newIn(n: number): NewThing[] {
   const helpers = HELPER_ORDER.filter((k) => HELPERS[k].unlockLevel === n).map(
-    (k) => `New helper: ${HELPERS[k].name}`,
+    (kind): NewThing => ({ type: "helper", kind }),
   );
-  const bugs = BUG_ORDER.filter(
-    (k) => k !== "ransom" && n > 1 && BUGS[k].unlockLevel === n,
-  ).map((k) => `New bug: ${BUGS[k].name}`);
-  const boss = BOSSES[n] ? ["Boss: Ransomware"] : [];
-  return [...helpers, ...bugs, ...boss];
+  const critters = CRITTER_ORDER.filter(
+    (k) => n > 1 && CRITTERS[k].unlockLevel === n,
+  ).map((kind): NewThing => ({ type: "critter", kind, boss: false }));
+  const boss: NewThing[] = BOSSES[n]
+    ? [{ type: "critter", kind: "grumble", boss: true }]
+    : [];
+  return [...helpers, ...critters, ...boss];
 }

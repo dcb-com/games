@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { LEVEL_COUNT, buildLevel } from "~/games/desk-defense/levels";
 import type { Round } from "~/games/desk-defense/round";
 import { finalScore, newRound, place, step } from "~/games/desk-defense/round";
+import type { CritterKind } from "~/games/desk-defense/units";
+import { CRITTERS, HELPER_ORDER } from "~/games/desk-defense/units";
 import { boostsFrom, NO_UPGRADES } from "~/games/desk-defense/upgrades";
 
 const plain = boostsFrom(NO_UPGRADES);
@@ -40,7 +42,7 @@ describe("levels", () => {
       const b = buildLevel(n + 1);
       // Bosses come on a few levels only, so they are left out here.
       const plainBugs = (l: typeof a) =>
-        l.spawns.filter((s) => s.kind !== "ransom").length;
+        l.spawns.filter((s) => s.kind !== "grumble").length;
       expect(plainBugs(b)).toBeGreaterThanOrEqual(plainBugs(a));
       expect(b.hpScale).toBeGreaterThan(a.hpScale);
     }
@@ -87,5 +89,149 @@ describe("a round", () => {
       boostsFrom({ ...NO_UPGRADES, energy: 2 }),
     );
     expect(r.energy).toBe(100);
+  });
+});
+
+// A round with one open row and nothing scheduled, for trying one helper
+// against one critter.
+function bench(): Round {
+  const level = { ...buildLevel(1), spawns: [], helpers: HELPER_ORDER };
+  const r = newRound(level, plain);
+  r.energy = 99999;
+  return r;
+}
+
+function addCritter(r: Round, kind: CritterKind, x: number) {
+  const def = CRITTERS[kind];
+  r.critters.push({
+    id: r.nextId++,
+    kind,
+    row: 2,
+    x,
+    hp: def.hp,
+    maxHp: def.hp,
+    armor: def.armor,
+    maxArmor: def.armor,
+    slowFor: 0,
+    stuckFor: 0,
+    stuckOn: 0,
+    hopped: false,
+    hop: null,
+    chewing: false,
+    flash: 0,
+    burn: 0,
+    angry: false,
+    age: 0,
+  });
+  const c = r.critters.at(-1);
+  if (!c) throw new Error("no critter");
+  return c;
+}
+
+function tick(r: Round, seconds: number) {
+  for (let t = 0; t < seconds; t += 0.05) step(r, 0.05);
+}
+
+describe("special moves", () => {
+  it("fires a gold staple every fourth shot", () => {
+    const r = bench();
+    place(r, "stapler", 2, 0);
+    addCritter(r, "chonk", 8.5);
+    const kinds: string[] = [];
+    for (let t = 0; t < 6; t += 0.05) {
+      step(r, 0.05);
+      for (const e of r.events) if (e.type === "fire") kinds.push(e.shot);
+      r.events = [];
+    }
+    expect(kinds.slice(0, 4)).toEqual(["staple", "staple", "staple", "power"]);
+  });
+
+  it("splits a splitter into two minis", () => {
+    const r = bench();
+    const c = addCritter(r, "splitter", 6);
+    c.hp = 1;
+    place(r, "stapler", 2, 0);
+    tick(r, 3);
+    expect(r.critters.filter((m) => m.kind === "mini")).toHaveLength(2);
+  });
+
+  it("gets angry and fast when a helmet breaks", () => {
+    const r = bench();
+    const c = addCritter(r, "shellby", 6);
+    c.armor = 1;
+    place(r, "stapler", 2, 0);
+    tick(r, 3);
+    expect(c.armor).toBe(0);
+    expect(c.angry).toBe(true);
+  });
+
+  it("holds critters on a sticky note, then uses it up", () => {
+    const r = bench();
+    place(r, "sticky", 2, 4);
+    const c = addCritter(r, "fuzzball", 5.1);
+    tick(r, 0.5);
+    expect(c.stuckFor).toBeGreaterThan(0);
+    const x = c.x;
+    tick(r, 1);
+    expect(c.x).toBe(x);
+    addCritter(r, "fuzzball", 5.1);
+    addCritter(r, "fuzzball", 5.12);
+    tick(r, 1);
+    expect(r.helpers.some((h) => h.kind === "sticky")).toBe(false);
+  });
+
+  it("hops over the first helper, then chews the next", () => {
+    const r = bench();
+    place(r, "firewall", 2, 6);
+    r.cooldowns.firewall = 0;
+    place(r, "firewall", 2, 4);
+    const c = addCritter(r, "hopper", 7.2);
+    tick(r, 4);
+    expect(c.hopped).toBe(true);
+    expect(c.x).toBeLessThan(6);
+    expect(c.x).toBeGreaterThan(5);
+  });
+
+  it("pushes the row back with a gust", () => {
+    const r = bench();
+    const fan = place(r, "fan", 2, 0);
+    expect(fan).toBe("placed");
+    const c = addCritter(r, "chonk", 6);
+    c.hp = 99999;
+    c.maxHp = 99999;
+    const h = r.helpers[0];
+    if (!h) throw new Error("no fan");
+    h.gust = 0;
+    step(r, 0.05);
+    expect(c.x).toBeGreaterThan(6.5);
+  });
+
+  it("burns a critter that chews a firewall", () => {
+    const r = bench();
+    place(r, "firewall", 2, 3);
+    const c = addCritter(r, "fuzzball", 4.2);
+    tick(r, 3);
+    expect(c.hp).toBeLessThan(c.maxHp);
+    expect(c.burn).toBeGreaterThan(0);
+  });
+
+  it("roars at half health and calls two fuzzballs", () => {
+    const r = bench();
+    const c = addCritter(r, "grumble", 8);
+    c.hp = c.maxHp / 2 + 1;
+    place(r, "stapler", 2, 0);
+    tick(r, 3);
+    expect(c.angry).toBe(true);
+    expect(r.critters.filter((f) => f.kind === "fuzzball")).toHaveLength(2);
+  });
+
+  it("zaps every critter in front of a lamp at once", () => {
+    const r = bench();
+    place(r, "lamp", 2, 0);
+    const a = addCritter(r, "chonk", 5);
+    const b = addCritter(r, "chonk", 8);
+    tick(r, 4);
+    expect(a.hp).toBeLessThan(a.maxHp);
+    expect(b.hp).toBeLessThan(b.maxHp);
   });
 });

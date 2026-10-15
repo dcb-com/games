@@ -1,4 +1,4 @@
-// What coins buy. Coins come from playing: every bug knocked out pays a
+// What coins buy. Coins come from playing: every critter stopped pays a
 // little, and a cleared level pays more. Each upgrade has a few steps, and
 // each step costs more than the one before.
 

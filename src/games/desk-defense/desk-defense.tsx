@@ -7,8 +7,10 @@ import { Button } from "@dcb/ui/button";
 import type { Player } from "~/mock/game-scores";
 import type { Moment } from "~/games/moments";
 import type { Layout, Palette } from "~/games/desk-defense/draw";
+import { Fx } from "~/games/desk-defense/art/fx";
 import {
   drawRound,
+  fxPlace,
   hitTest,
   layout,
   readPalette,
@@ -58,6 +60,11 @@ interface Session {
   guideStep: number;
   // When the current guide step first showed, in round seconds.
   guideSince: number;
+  // Puffs, sparks and flying energy, which outlive a remount too.
+  fx: Fx;
+  // Seconds of play drawn so far. It stands still while the game is
+  // paused, so nothing on the desk moves.
+  clock: number;
 }
 
 const sessions = new Map<string, Session>();
@@ -65,7 +72,14 @@ const sessions = new Map<string, Session>();
 function sessionFor(player: Player): Session {
   let s = sessions.get(player.email);
   if (!s) {
-    s = { round: null, screen: "title", guideStep: 0, guideSince: 0 };
+    s = {
+      round: null,
+      screen: "title",
+      guideStep: 0,
+      guideSince: 0,
+      fx: new Fx(),
+      clock: 0,
+    };
     sessions.set(player.email, s);
   }
   return s;
@@ -76,7 +90,7 @@ const NOTICES: Record<Exclude<PlaceResult, "placed">, string> = {
   taken: "Something is already there.",
   "no-energy": "Not enough energy yet.",
   recharging: "That card is still recharging.",
-  "no-card": "Pick a card first: 1 to 6.",
+  "no-card": "Pick a card first: 1 to 8.",
 };
 
 export function DeskDefense({
@@ -123,16 +137,27 @@ export function DeskDefense({
     setScreenState(next);
   }
 
-  function paint(time = performance.now() / 1000) {
+  function paint() {
     const canvas = canvasRef.current;
     const l = layoutRef.current;
     const p = paletteRef.current;
-    const r = sessionFor(player).round;
+    const s = sessionFor(player);
+    const r = s.round;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !l || !p || !r || !ctx) return;
     const ratio = canvas.width / l.width;
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    drawRound(ctx, p, l, r, time, stillRef.current, true);
+    // New events become puffs and sparks, even while paused, so a helper
+    // placed during a pause still shows its little ring later.
+    s.fx.take(r.events, fxPlace(l), stillRef.current);
+    r.events = [];
+    drawRound(ctx, p, l, r, {
+      t: stillRef.current ? 0 : s.clock,
+      still: stillRef.current,
+      ratio,
+      fx: s.fx,
+      showCursor: true,
+    });
   }
 
   function say(words: string) {
@@ -211,11 +236,13 @@ export function DeskDefense({
       if (!r) return;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      const holding =
-        r.level.guided && GUIDE[sessionFor(player).guideStep]?.holds;
+      const s = sessionFor(player);
+      const holding = r.level.guided && GUIDE[s.guideStep]?.holds;
       if (!holding) step(r, dt);
+      s.clock += dt;
+      s.fx.step(dt);
       checkGuide(r);
-      paint(now / 1000);
+      paint();
       if (r.outcome !== "playing") {
         finish(r);
         return;
@@ -234,6 +261,7 @@ export function DeskDefense({
     s.round = newRound(buildLevel(n), boostsFrom(getProgress(player).owned));
     s.guideStep = 0;
     s.guideSince = 0;
+    s.fx.clear();
     setGuideStep(0);
     setResumeLevel(n);
     setHeld(false);
@@ -318,7 +346,7 @@ export function DeskDefense({
       paint();
       return;
     }
-    if (/^[1-6]$/.test(e.key)) {
+    if (/^[1-8]$/.test(e.key)) {
       choose(r, r.level.helpers[Number(e.key) - 1]);
       return;
     }
