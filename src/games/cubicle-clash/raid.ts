@@ -7,6 +7,7 @@ import {
   ROWS,
   TROOPS,
   TROOP_ORDER,
+  isDecor,
   levelScale,
 } from "~/games/cubicle-clash/units";
 
@@ -45,6 +46,8 @@ export interface Troop {
   slowFor: number;
   flash: number;
   age: number;
+  // Which way it faces on screen. The board is drawn at an angle, so
+  // "right" on screen is where x grows and y shrinks.
   facing: 1 | -1;
   chewing: boolean;
   // A jump over a wall, for the drawing.
@@ -80,6 +83,9 @@ export type RaidOutcome = "playing" | "done";
 export interface Raid {
   rival: { name: string; email: string };
   targets: Target[];
+  // Decorations: drawn, but troops walk past them and they count for
+  // nothing.
+  scenery: { kind: BuildingKind; level: number; col: number; row: number }[];
   troops: Troop[];
   shots: Shot[];
   events: RaidEvent[];
@@ -107,28 +113,33 @@ export function newRaid(
   level = 1,
 ): Raid {
   let nextId = 1;
-  const targets: Target[] = base.buildings.map((b) => {
-    const def = BUILDINGS[b.kind];
-    const hp = def.hp * levelScale(b.level);
-    return {
-      id: nextId++,
-      kind: b.kind,
-      level: b.level,
-      col: b.col,
-      row: b.row,
-      size: def.size,
-      hp,
-      maxHp: hp,
-      timer: def.every,
-      acted: 99,
-      bitten: 99,
-      down: false,
-    };
-  });
+  const targets: Target[] = base.buildings
+    .filter((b) => !isDecor(b.kind))
+    .map((b) => {
+      const def = BUILDINGS[b.kind];
+      const hp = def.hp * levelScale(b.level);
+      return {
+        id: nextId++,
+        kind: b.kind,
+        level: b.level,
+        col: b.col,
+        row: b.row,
+        size: def.size,
+        hp,
+        maxHp: hp,
+        timer: def.every,
+        acted: 99,
+        bitten: 99,
+        down: false,
+      };
+    });
   const first = TROOP_ORDER.find((k) => army[k] > 0);
   return {
     rival,
     targets,
+    scenery: base.buildings
+      .filter((b) => isDecor(b.kind))
+      .map((b) => ({ kind: b.kind, level: b.level, col: b.col, row: b.row })),
     troops: [],
     shots: [],
     events: [],
@@ -213,7 +224,7 @@ export function drop(
     slowFor: 0,
     flash: 0,
     age: 0,
-    facing: col < COLS / 2 ? 1 : -1,
+    facing: col - row < (COLS - ROWS) / 2 ? 1 : -1,
     chewing: false,
     hop: null,
   });
@@ -409,7 +420,7 @@ export function step(r: Raid, dt: number) {
     const near = reach(goal, troop.x, troop.y);
     if (near.d <= REACH) {
       troop.chewing = true;
-      troop.facing = near.x > troop.x ? 1 : -1;
+      troop.facing = near.x - near.y > troop.x - troop.y ? 1 : -1;
       hurtTarget(r, goal, def.dps * levelScale(r.level) * dt);
       if (goal.down) troop.blocker = null;
       continue;
@@ -423,7 +434,7 @@ export function step(r: Raid, dt: number) {
     const go = def.speed * (troop.slowFor > 0 ? 0.5 : 1) * dt;
     const nx = troop.x + (dx / d) * go;
     const ny = troop.y + (dy / d) * go;
-    troop.facing = dx > 0 ? 1 : -1;
+    troop.facing = dx - dy > 0 ? 1 : -1;
 
     // Something standing in the way? Walls stop all but hoppers; any other
     // building in the way gets broken through.

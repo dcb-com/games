@@ -5,11 +5,15 @@ import { CLASH_RIVALS } from "~/mock/game-scores";
 import type { Base, Wallet } from "~/games/cubicle-clash/base";
 import {
   build,
+  clear,
   collectAll,
+  finishNow,
   limitOf,
   move,
   nextLevel,
   officeLevel,
+  sell,
+  settle,
   starterBase,
   stored,
   upgrade,
@@ -46,8 +50,13 @@ beforeEach(() => {
   resetClashCache();
 });
 
+// The starter base without its clutter, so a test can build anywhere free.
+function clean(): Base {
+  return { ...starterBase(0), clutter: [] };
+}
+
 function rich(): Wallet {
-  return { coins: 1e6, coffee: 1e6 };
+  return { coins: 1e6, coffee: 1e6, gems: 1e6 };
 }
 
 function run(r: Raid, seconds: number) {
@@ -56,8 +65,59 @@ function run(r: Raid, seconds: number) {
 }
 
 describe("a base", () => {
-  it("builds only on free tiles inside the edge, within the head office's limits", () => {
+  it("needs a free builder, and finishes a job when its time is up", () => {
+    const base = clean();
+    const wallet = rich();
+    expect(build(base, wallet, "press", 2, 2, 0)).toBe("built");
+    const press = base.buildings.at(-1);
+    if (!press?.job) throw new Error("no job");
+    expect(stored(press, 60 * MINUTE)).toBe(0);
+    // Two builders: the second job takes the other one, the third waits.
+    expect(build(base, wallet, "coffee", 2, 3, 0)).toBe("built");
+    expect(build(base, wallet, "vault", 2, 4, 0)).toBe("busy");
+    const done = settle(base, wallet, 10 * MINUTE);
+    expect(done.map((d) => d.kind)).toEqual(["built", "built"]);
+    expect(press.job).toBeNull();
+    expect(build(base, wallet, "vault", 2, 4, 10 * MINUTE)).toBe("built");
+  });
+
+  it("finishes a job at once for gems", () => {
+    const base = clean();
+    const wallet = rich();
+    const office = base.buildings.find((b) => b.kind === "office");
+    if (!office) throw new Error("no office");
+    expect(upgrade(base, wallet, office, 0)).toBe("upgraded");
+    expect(office.level).toBe(1);
+    const gems = wallet.gems;
+    finishNow(base, wallet, office, 0);
+    expect(office.level).toBe(2);
+    expect(wallet.gems).toBeLessThan(gems);
+  });
+
+  it("clears clutter with a builder and finds gems", () => {
     const base = starterBase(0);
+    const wallet = { coins: 1000, coffee: 0, gems: 0 };
+    const mess = base.clutter[0];
+    if (!mess) throw new Error("no clutter");
+    expect(clear(base, wallet, mess, 0)).toBe("clearing");
+    settle(base, wallet, 60_000);
+    expect(base.clutter.some((c) => c.id === mess.id)).toBe(false);
+    expect(wallet.gems).toBeGreaterThan(0);
+  });
+
+  it("places decorations at once, and gives back their price when put away", () => {
+    const base = clean();
+    const wallet = { coins: 100, coffee: 0, gems: 0 };
+    expect(build(base, wallet, "plant", 2, 2, 0)).toBe("built");
+    const plant = base.buildings.at(-1);
+    if (!plant) throw new Error("no plant");
+    expect(plant.job).toBeNull();
+    expect(sell(base, wallet, plant)).toBe(true);
+    expect(wallet.coins).toBe(100);
+  });
+
+  it("builds only on free tiles inside the edge, within the head office's limits", () => {
+    const base = clean();
     const wallet = rich();
     expect(build(base, wallet, "stapler", 0, 3, 0)).toBe("edge");
     expect(build(base, wallet, "stapler", 7, 3, 0)).toBe("taken");
@@ -68,14 +128,14 @@ describe("a base", () => {
   });
 
   it("refuses to build without the coins", () => {
-    const base = starterBase(0);
-    expect(build(base, { coins: 5, coffee: 0 }, "press", 2, 2, 0)).toBe(
-      "coins",
-    );
+    const base = clean();
+    expect(
+      build(base, { coins: 5, coffee: 0, gems: 0 }, "press", 2, 2, 0),
+    ).toBe("coins");
   });
 
   it("caps other buildings at the head office's level", () => {
-    const base = starterBase(0);
+    const base = clean();
     const wallet = rich();
     const press = base.buildings.find((b) => b.kind === "press");
     if (!press) throw new Error("no press");
@@ -83,18 +143,20 @@ describe("a base", () => {
     const office = base.buildings.find((b) => b.kind === "office");
     if (!office) throw new Error("no office");
     expect(upgrade(base, wallet, office, 0)).toBe("upgraded");
+    settle(base, wallet, 60 * MINUTE);
     expect(officeLevel(base)).toBe(2);
-    expect(upgrade(base, wallet, press, 0)).toBe("upgraded");
+    expect(upgrade(base, wallet, press, 60 * MINUTE)).toBe("upgraded");
+    settle(base, wallet, 120 * MINUTE);
     expect(press.level).toBe(2);
   });
 
   it("fills a press over time, up to what it holds, and collects into the wallet", () => {
-    const base = starterBase(0);
+    const base = clean();
     const press = base.buildings.find((b) => b.kind === "press");
     if (!press) throw new Error("no press");
     expect(stored(press, 5 * MINUTE)).toBe(30);
     expect(stored(press, 600 * MINUTE)).toBe(90);
-    const wallet = { coins: 0, coffee: 0 };
+    const wallet = { coins: 0, coffee: 0, gems: 0 };
     const got = collectAll(base, wallet, 5 * MINUTE);
     expect(got.coins).toBe(30);
     expect(wallet.coins).toBe(30);
@@ -102,7 +164,7 @@ describe("a base", () => {
   });
 
   it("moves a building only to a free spot", () => {
-    const base = starterBase(0);
+    const base = clean();
     const stapler = base.buildings.find((b) => b.kind === "stapler");
     if (!stapler) throw new Error("no stapler");
     expect(move(base, stapler, 7, 4)).toBe(false);
@@ -151,7 +213,8 @@ describe("a raid", () => {
   it("is won by a crowd of fuzzballs against a small, undefended base", () => {
     const base: Base = {
       buildings: starterBase(0).buildings.filter((b) => b.kind !== "stapler"),
-      nextId: 9,
+      clutter: [],
+      nextId: 99,
     };
     const r = raidOn(base, { fuzzball: 12 });
     for (let i = 0; i < 12; i++)
@@ -173,7 +236,15 @@ describe("a raid", () => {
   it("makes troops break walls, but hoppers jump them", () => {
     const base: Base = {
       buildings: [
-        { id: 1, kind: "office", level: 1, col: 7, row: 3, since: 0 },
+        {
+          id: 1,
+          kind: "office",
+          level: 1,
+          col: 7,
+          row: 3,
+          since: 0,
+          job: null,
+        },
         ...[2, 3, 4, 5].map((row, i) => ({
           id: 2 + i,
           kind: "wall" as const,
@@ -181,8 +252,10 @@ describe("a raid", () => {
           col: 5,
           row,
           since: 0,
+          job: null,
         })),
       ],
+      clutter: [],
       nextId: 9,
     };
     const walker = raidOn(base, { fuzzball: 1 });

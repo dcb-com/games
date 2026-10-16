@@ -16,9 +16,17 @@ export type BuildingKind =
   | "fan"
   | "printer"
   | "lamp"
-  | "wall";
+  | "wall"
+  | "plant"
+  | "cooler"
+  | "banner"
+  | "lamppost"
+  | "fountain"
+  | "statue";
 
-export type Role = "core" | "resource" | "army" | "defense" | "wall";
+// Decorations only make a fort look good. Troops walk past them and they
+// do not count toward a raid's stars.
+export type Role = "core" | "resource" | "army" | "defense" | "wall" | "decor";
 
 export interface BuildingDef {
   kind: BuildingKind;
@@ -192,6 +200,96 @@ export const BUILDINGS: Record<BuildingKind, BuildingDef> = {
     splash: 0,
     slows: false,
   },
+  plant: {
+    kind: "plant",
+    name: "Potted plant",
+    blurb: "A leafy friend for the corner of your fort.",
+    role: "decor",
+    size: 1,
+    hp: 1,
+    cost: 25,
+    limit: [4, 6, 8, 10, 12],
+    range: 0,
+    damage: 0,
+    every: 0,
+    splash: 0,
+    slows: false,
+  },
+  cooler: {
+    kind: "cooler",
+    name: "Water cooler",
+    blurb: "Where the gossip happens. Bubbles now and then.",
+    role: "decor",
+    size: 1,
+    hp: 1,
+    cost: 60,
+    limit: [1, 2, 2, 3, 3],
+    range: 0,
+    damage: 0,
+    every: 0,
+    splash: 0,
+    slows: false,
+  },
+  banner: {
+    kind: "banner",
+    name: "Banner",
+    blurb: "Fly your colors over the fort.",
+    role: "decor",
+    size: 1,
+    hp: 1,
+    cost: 80,
+    limit: [2, 3, 4, 5, 6],
+    range: 0,
+    damage: 0,
+    every: 0,
+    splash: 0,
+    slows: false,
+  },
+  lamppost: {
+    kind: "lamppost",
+    name: "Lamp post",
+    blurb: "A warm light along the path.",
+    role: "decor",
+    size: 1,
+    hp: 1,
+    cost: 100,
+    limit: [0, 2, 4, 6, 8],
+    range: 0,
+    damage: 0,
+    every: 0,
+    splash: 0,
+    slows: false,
+  },
+  fountain: {
+    kind: "fountain",
+    name: "Fountain",
+    blurb: "Splashing water in the courtyard.",
+    role: "decor",
+    size: 1,
+    hp: 1,
+    cost: 400,
+    limit: [0, 0, 1, 1, 2],
+    range: 0,
+    damage: 0,
+    every: 0,
+    splash: 0,
+    slows: false,
+  },
+  statue: {
+    kind: "statue",
+    name: "Statue of Dot",
+    blurb: "A golden Dot, for forts that have made it.",
+    role: "decor",
+    size: 1,
+    hp: 1,
+    cost: 900,
+    limit: [0, 0, 0, 1, 1],
+    range: 0,
+    damage: 0,
+    every: 0,
+    splash: 0,
+    slows: false,
+  },
 };
 
 // The build bar, in order. The head office is never built, only upgraded.
@@ -207,7 +305,56 @@ export const BUILD_ORDER: BuildingKind[] = [
   "wall",
 ];
 
+export const DECOR_ORDER: BuildingKind[] = [
+  "plant",
+  "cooler",
+  "banner",
+  "lamppost",
+  "fountain",
+  "statue",
+];
+
+export function isDecor(kind: BuildingKind): boolean {
+  return BUILDINGS[kind].role === "decor";
+}
+
 export const MAX_LEVEL = 5;
+
+// How long building or upgrading takes, in seconds, to reach `level`.
+// Walls and decorations go up at once; everything else needs a builder for
+// a while, and a bigger level takes longer, as in the game this is modeled
+// on. The head office takes longest of all.
+export function buildSeconds(kind: BuildingKind, level: number): number {
+  if (kind === "wall" || isDecor(kind)) return 0;
+  const base = kind === "office" ? 60 : 15;
+  return Math.round(base * level ** 1.7);
+}
+
+// Builders: two to start, one more at head office levels 3 and 5.
+export function buildersFor(office: number): number {
+  return 2 + (office >= 3 ? 1 : 0) + (office >= 5 ? 1 : 0);
+}
+
+// Gems to finish a job now: one for every half minute left.
+export function gemsToFinish(secondsLeft: number): number {
+  return Math.max(1, Math.ceil(secondsLeft / 30));
+}
+
+// Clutter on the land: things to clear away before building there.
+export type ClutterKind = "boxes" | "papers" | "bush" | "rock";
+
+export const CLUTTER: Record<
+  ClutterKind,
+  { name: string; cost: number; gems: number }
+> = {
+  boxes: { name: "Stack of boxes", cost: 20, gems: 1 },
+  papers: { name: "Pile of paper", cost: 10, gems: 1 },
+  bush: { name: "Bush", cost: 30, gems: 2 },
+  rock: { name: "Rock", cost: 50, gems: 3 },
+};
+
+// Clearing clutter takes a builder this long.
+export const CLEAR_SECONDS = 6;
 
 // Coins to upgrade the head office to each level.
 export const OFFICE_COSTS = [0, 400, 1100, 2400, 4500];

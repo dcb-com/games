@@ -3,11 +3,31 @@ import { useSyncExternalStore } from "react";
 import { seeded } from "~/games/art/color";
 import type { Player, Rival } from "~/mock/game-scores";
 import { CLASH_RIVALS } from "~/mock/game-scores";
-import type { Base, Building, Wallet } from "~/games/cubicle-clash/base";
-import { defensePower, inside, starterBase } from "~/games/cubicle-clash/base";
+import type {
+  Base,
+  Building,
+  Clutter,
+  Job,
+  Wallet,
+} from "~/games/cubicle-clash/base";
+import {
+  defensePower,
+  inside,
+  pileUp,
+  starterBase,
+} from "~/games/cubicle-clash/base";
 import { hash } from "~/games/cubicle-clash/rivals";
-import type { BuildingKind, TroopKind } from "~/games/cubicle-clash/units";
-import { BUILDINGS, MAX_LEVEL, TROOP_ORDER } from "~/games/cubicle-clash/units";
+import type {
+  BuildingKind,
+  ClutterKind,
+  TroopKind,
+} from "~/games/cubicle-clash/units";
+import {
+  BUILDINGS,
+  CLUTTER,
+  MAX_LEVEL,
+  TROOP_ORDER,
+} from "~/games/cubicle-clash/units";
 
 // What a player keeps in Cubicle Clash: their base, coins and coffee, the
 // crew waiting in the break room, trophies, and the raids that happened
@@ -56,7 +76,7 @@ export const NO_ARMY: Record<TroopKind, number> = {
 export function freshClash(player: Player, now: number): Clash {
   return {
     name: player.name,
-    wallet: { coins: 300, coffee: 150 },
+    wallet: { coins: 300, coffee: 150, gems: 10 },
     base: starterBase(now),
     army: { ...NO_ARMY, fuzzball: 6 },
     trophies: 0,
@@ -87,6 +107,19 @@ function str(value: unknown, fallback = ""): string {
 const KINDS = Object.keys(BUILDINGS);
 function isKind(text: string): text is BuildingKind {
   return KINDS.includes(text);
+}
+
+const CLUTTER_KINDS = Object.keys(CLUTTER);
+function isClutter(text: string): text is ClutterKind {
+  return CLUTTER_KINDS.includes(text);
+}
+
+// oxlint-disable-next-line dcb/no-unknown -- stored JSON, checked here
+function readJob(value: unknown): Job | null {
+  const kind = str(field(value, "kind"));
+  if (kind !== "build" && kind !== "upgrade") return null;
+  const until = num(field(value, "until"), 0);
+  return { kind, until, total: Math.max(1, num(field(value, "total"), 1)) };
 }
 
 export function parseClash(
@@ -121,14 +154,36 @@ export function parseClash(
         col: Math.floor(num(field(item, "col"))),
         row: Math.floor(num(field(item, "row"))),
         since: num(field(item, "since"), now),
+        job: readJob(field(item, "job")),
       };
       if (inside(b.col, b.row, BUILDINGS[kind].size)) buildings.push(b);
     }
   }
   if (!buildings.some((b) => b.kind === "office")) return base;
+
+  const rawClutter = field(field(raw, "base"), "clutter");
+  const clutter: Clutter[] = [];
+  if (Array.isArray(rawClutter)) {
+    for (const item of rawClutter.slice(0, 20)) {
+      const kind = str(field(item, "kind"));
+      if (!isClutter(kind)) continue;
+      const until = num(field(field(item, "clearing"), "until"), -1);
+      clutter.push({
+        id: Math.floor(num(field(item, "id"))),
+        kind,
+        col: Math.floor(num(field(item, "col"))),
+        row: Math.floor(num(field(item, "row"))),
+        clearing:
+          until >= 0
+            ? { until, total: num(field(field(item, "clearing"), "total"), 1) }
+            : null,
+      });
+    }
+  }
   const nextId = Math.max(
     num(field(field(raw, "base"), "nextId")),
     ...buildings.map((b) => b.id + 1),
+    ...clutter.map((c) => c.id + 1),
   );
 
   const army = { ...NO_ARMY };
@@ -165,8 +220,12 @@ export function parseClash(
         0,
         Math.floor(num(field(field(raw, "wallet"), "coffee"))),
       ),
+      gems: Math.max(
+        0,
+        Math.floor(num(field(field(raw, "wallet"), "gems"), 10)),
+      ),
     },
-    base: { buildings, nextId },
+    base: { buildings, clutter, nextId },
     army,
     trophies: Math.max(0, Math.floor(num(field(raw, "trophies")))),
     rivals,
@@ -290,6 +349,8 @@ export function welcomeBack(c: Clash, player: Player, now: number): LogEntry[] {
   }
   c.log = [...found.reverse(), ...c.log].slice(0, 20);
   c.unseen = Math.min(c.log.length, c.unseen + found.length);
+  // Clutter piles up on the land while nobody is looking.
+  pileUp(c.base, c.seen, now);
   c.seen = now;
   return found;
 }

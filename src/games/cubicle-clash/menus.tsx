@@ -33,8 +33,10 @@ import type { BuildingKind, TroopKind } from "~/games/cubicle-clash/units";
 import {
   BUILDINGS,
   BUILD_ORDER,
+  DECOR_ORDER,
   TROOPS,
   TROOP_ORDER,
+  buildSeconds,
   costFor,
 } from "~/games/cubicle-clash/units";
 
@@ -142,23 +144,49 @@ function Panel({
   );
 }
 
+function seconds(n: number) {
+  if (n === 0) return "At once";
+  if (n < 60) return `${n}s`;
+  const m = Math.floor(n / 60);
+  return n % 60 === 0 ? `${m}m` : `${m}m ${n % 60}s`;
+}
+
 export function BuildPanel({
   clash,
+  tab,
+  onTab,
   onPick,
   onBack,
 }: {
   clash: Clash;
+  tab: "buildings" | "decor";
+  onTab: (tab: "buildings" | "decor") => void;
   onPick: (kind: BuildingKind) => void;
   onBack: () => void;
 }) {
+  const list = tab === "decor" ? DECOR_ORDER : BUILD_ORDER;
   return (
     <Panel
       title="Build"
       onBack={onBack}
       right={<Amount icon="coins" value={clash.wallet.coins} label="coins" />}
     >
+      <div className="flex gap-1" role="group" aria-label="What to build">
+        {(["buildings", "decor"] as const).map((t) => (
+          <Button
+            key={t}
+            size="xs"
+            variant={tab === t ? "default" : "outline"}
+            aria-pressed={tab === t}
+            onClick={() => onTab(t)}
+            className="flex-1"
+          >
+            {t === "buildings" ? "Buildings" : "Decorations"}
+          </Button>
+        ))}
+      </div>
       <ul className="grid grid-cols-3 gap-1.5">
-        {BUILD_ORDER.map((kind, i) => {
+        {list.map((kind, i) => {
           const def = BUILDINGS[kind];
           const have = countOf(clash.base, kind);
           const limit = limitOf(clash.base, kind);
@@ -171,9 +199,8 @@ export function BuildPanel({
                 type="button"
                 disabled={full || poor}
                 onClick={() => onPick(kind)}
-                className={cn(
-                  "border-border hover:bg-secondary focus-visible:ring-ring/40 flex w-full items-center gap-2 rounded-lg border p-1.5 text-left outline-none focus-visible:ring-4 disabled:opacity-50",
-                )}
+                title={def.blurb}
+                className="border-border hover:bg-secondary focus-visible:ring-ring/40 flex w-full items-center gap-2 rounded-lg border p-1.5 text-left outline-none focus-visible:ring-4 disabled:opacity-50"
               >
                 <BuildingPortrait kind={kind} className="size-10" />
                 <span className="min-w-0 flex-1">
@@ -198,6 +225,9 @@ export function BuildPanel({
                         </span>
                         <span className="tabular-nums">
                           {have}/{limit}
+                        </span>
+                        <span className="tabular-nums">
+                          {seconds(buildSeconds(kind, 1))}
                         </span>
                       </>
                     )}

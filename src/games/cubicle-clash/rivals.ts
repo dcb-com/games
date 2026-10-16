@@ -28,9 +28,17 @@ export function rivalBase(rival: Rival): Base {
   const random = seeded(hash(rival.email));
   const office = Math.max(1, Math.min(5, rival.office));
   const buildings: Building[] = [];
-  const base: Base = { buildings, nextId: 1 };
+  const base: Base = { buildings, clutter: [], nextId: 1 };
   const add = (kind: BuildingKind, level: number, col: number, row: number) => {
-    buildings.push({ id: base.nextId++, kind, level, col, row, since: 0 });
+    buildings.push({
+      id: base.nextId++,
+      kind,
+      level,
+      col,
+      row,
+      since: 0,
+      job: null,
+    });
   };
   add("office", office, 7, 3);
 
@@ -51,8 +59,8 @@ export function rivalBase(rival: Rival): Base {
     }
     return spots;
   };
-  const place = (kind: BuildingKind, near: number, far: number) => {
-    const limit = BUILDINGS[kind].limit[office - 1] ?? 0;
+  const place = (kind: BuildingKind, near: number, far: number, most = 99) => {
+    const limit = Math.min(most, BUILDINGS[kind].limit[office - 1] ?? 0);
     // Most coworkers have not built everything they could.
     const count = Math.max(0, limit - (random() < 0.4 ? 1 : 0));
     for (let i = 0; i < count; i++) {
@@ -95,6 +103,13 @@ export function rivalBase(rival: Rival): Base {
       }
     }
   }
+  // Decorations in whatever room is left, so every fort looks lived in.
+  place("fountain", 1.5, 5);
+  place("statue", 1.5, 5);
+  place("banner", 2, 6, 3);
+  place("lamppost", 2, 8, 2);
+  place("cooler", 3, 8, 1);
+  place("plant", 3, 9, 3);
   return base;
 }
 

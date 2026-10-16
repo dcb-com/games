@@ -18,7 +18,9 @@ between them.
   collects just that one.
 - **B** opens the build menu. Pick a building with its number, move it into
   place, and press **Enter**.
-- With a building picked: **U** upgrades it, **M** moves it.
+- With a building picked: **U** upgrades it, **M** moves it, and **F**
+  finishes its build at once for gems.
+- With clutter picked, **U** clears it.
 - **T** trains troops, **R** finds a coworker to raid, and **L** opens the
   raid log.
 - **Esc** cancels, then leaves the game.
@@ -31,6 +33,38 @@ between them.
   to a building. A red tint marks where they cannot land.
 - **E** ends the raid early, keeping what was won. **Esc** pauses it.
 - A raid lasts 75 seconds at most.
+
+## Building the fort
+
+The fort is the heart of the game. It is drawn at an angle, like a model
+village on a meadow, with forest all around.
+
+- **Builders.** Every new building and every upgrade takes a builder and
+  some time. A player starts with two builders, gets a third at head office
+  level 3 and a fourth at level 5. The top bar shows how many are free.
+  While a building goes up, scaffolding stands around it, a small Dot
+  hammers away, and a bar shows the time left. Build times grow with each
+  level: a few seconds for a level 1 coin press, several minutes for a big
+  head office. The clock keeps running while the game is closed.
+- **Gems.** Gems finish a build at once: one gem for every 30 seconds left.
+  A player starts with 10. Clearing clutter pays gems.
+- **Clutter.** Boxes, papers, bushes and rocks lie around the fort. Clearing
+  one costs a few coins, takes a builder six seconds and pays gems. More
+  clutter turns up while the player is away: one piece every two hours,
+  twelve at most.
+- **Celebrations.** When a build finishes, confetti and a banner say so. A
+  new head office level gets a bigger show, and its building grows towers,
+  flags and gold trim as it climbs.
+- **Decorations.** Potted plants, water coolers, banners, lamp posts,
+  fountains and a golden statue of Dot. They are on the second tab of the
+  build menu. They go up at once, do nothing in a raid, and can be put away
+  for most of their cost back.
+- **Fort rating.** The top bar shows a fort rating: everything spent on the
+  fort, buildings and decorations alike, divided by ten. It is a simple way
+  to see the fort grow.
+- **Walls** join up with the walls next to them, so a row of walls makes a
+  fence. Walls and decorations stay in placing mode, so a player can set
+  down one after another.
 
 ## Stars, loot and trophies
 
@@ -58,6 +92,15 @@ player is not in it, their place shows under the list.
 | Printer        | Paper planes that hit every troop where they land                     | 2                 |
 | Desk lamp      | Long reach and a big zap, slow to charge                              | 3                 |
 | Cubicle wall   | Troops must break through. Hoppers jump it.                           | 1                 |
+
+| Decoration    | Cost | Needs head office |
+| ------------- | ---- | ----------------- |
+| Potted plant  | 25   | 1                 |
+| Water cooler  | 60   | 1                 |
+| Banner        | 80   | 1                 |
+| Lamp post     | 100  | 2                 |
+| Fountain      | 400  | 3                 |
+| Statue of Dot | 900  | 4                 |
 
 ## Troops
 
@@ -97,11 +140,11 @@ nothing wiggles or floats.
 | File                | What it holds                                               |
 | ------------------- | ----------------------------------------------------------- |
 | `units.ts`          | Every building and troop, and the numbers that balance them |
-| `base.ts`           | Building, moving, upgrading and collecting                  |
+| `base.ts`           | Building, builders, clutter, upgrading and collecting       |
 | `rivals.ts`         | The made-up coworkers' bases and loot                       |
 | `raid.ts`           | The rules of a raid, with no drawing                        |
 | `save.ts`           | Saved progress, raids while away and the leaderboard        |
-| `art.ts`            | The buildings, the floor and rubble                         |
+| `art.ts`            | The buildings, decorations, scaffolding, meadow and rubble  |
 | `draw.ts`           | Puts a base or a raid on the canvas                         |
 | `menus.tsx`         | Build, train, raid, log, top five and results               |
 | `cubicle-clash.tsx` | The game's box, its loop and its keys                       |
