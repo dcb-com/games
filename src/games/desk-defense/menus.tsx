@@ -3,12 +3,13 @@ import {
   Bot,
   Check,
   Coins,
+  Gamepad2,
   Lock,
   Play,
   ShoppingBag,
   Trophy,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { cn } from "@dcb/ui";
 import { Button } from "@dcb/ui/button";
@@ -17,7 +18,17 @@ import type { Player } from "~/mock/game-scores";
 import { drawPortrait } from "~/games/desk-defense/draw";
 import { HOST } from "~/games/desk-defense/guide";
 import type { NewThing } from "~/games/desk-defense/levels";
-import { LEVEL_COUNT, buildLevel, newIn } from "~/games/desk-defense/levels";
+import {
+  LEVEL_COUNT,
+  WORLDS,
+  WORLD_SIZE,
+  bonusAt,
+  bonusName,
+  buildLevel,
+  newIn,
+  worldOf,
+} from "~/games/desk-defense/levels";
+import { BONUSES } from "~/games/desk-defense/bonus";
 import type { CritterKind, HelperKind } from "~/games/desk-defense/units";
 import { CRITTERS, HELPERS } from "~/games/desk-defense/units";
 import type { Progress } from "~/games/desk-defense/progress";
@@ -232,33 +243,68 @@ export function LevelsScreen({
   onPick: (n: number) => void;
   onBack: () => void;
 }) {
+  const next = Math.min(LEVEL_COUNT, progress.cleared + 1);
+  const [world, setWorld] = useState(() => Math.floor((next - 1) / WORLD_SIZE));
+  const first = world * WORLD_SIZE + 1;
   return (
     <div className="flex h-full flex-col gap-2 overflow-y-auto p-3">
       <Header title="Levels" coins={progress.coins} onBack={onBack} />
-      <ol className="grid grid-cols-9 gap-1">
-        {Array.from({ length: LEVEL_COUNT }, (_, i) => {
-          const n = i + 1;
+      <div className="flex gap-1" role="group" aria-label="Worlds">
+        {WORLDS.map((w, i) => (
+          <Button
+            key={w.theme}
+            size="xs"
+            variant={i === world ? "default" : "outline"}
+            aria-pressed={i === world}
+            onClick={() => setWorld(i)}
+            className="flex-1"
+          >
+            {w.name}
+          </Button>
+        ))}
+      </div>
+      <ol className="grid grid-cols-10 gap-1">
+        {Array.from({ length: WORLD_SIZE }, (_, i) => {
+          const n = first + i;
           const open = n <= progress.cleared + 1;
           const done = n <= progress.cleared;
-          const name = buildLevel(n).name;
+          const bonus = bonusAt(n);
+          const name = bonus
+            ? `Bonus game: ${bonusName(bonus)}`
+            : buildLevel(n).name;
           return (
             <li key={n}>
               <Button
                 size="xs"
                 variant={done ? "secondary" : open ? "outline" : "ghost"}
                 disabled={!open}
-                className="w-full tabular-nums"
+                className={cn(
+                  "w-full gap-0.5 px-0 tabular-nums",
+                  bonus && open && "text-accent-strong",
+                )}
                 title={open ? name : "Clear the level before it first."}
                 aria-label={`Level ${n}, ${name}${done ? ", cleared" : ""}${open ? "" : ", locked"}`}
                 onClick={() => onPick(n)}
               >
-                {open ? n : <Lock className="size-3" />}
-                {done && <Check className="text-success-foreground size-3" />}
+                {!open ? (
+                  <Lock className="size-3" />
+                ) : bonus ? (
+                  <Gamepad2 className="size-3.5" />
+                ) : (
+                  n
+                )}
+                {done && !bonus && (
+                  <Check className="text-success-foreground size-3" />
+                )}
               </Button>
             </li>
           );
         })}
       </ol>
+      <p className="type-caption">
+        {WORLDS[world]?.twist}{" "}
+        <Gamepad2 aria-hidden className="inline size-3" /> is a bonus game.
+      </p>
     </div>
   );
 }
@@ -277,16 +323,45 @@ export function IntroScreen({
   const level = buildLevel(n);
   const news = newIn(n);
   const best = progress.best[n];
+  const world = worldOf(n);
+  const bonus = level.bonus ? BONUSES[level.bonus] : null;
+  const newWorld = n > 1 && n % WORLD_SIZE === 1;
   return (
     <div className="flex h-full flex-col gap-3 overflow-y-auto p-3">
-      <Header title={`Level ${n}`} coins={progress.coins} onBack={onBack} />
+      <Header
+        title={`Level ${n} · ${world.name}`}
+        coins={progress.coins}
+        onBack={onBack}
+      />
       <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-        <p className="type-label text-base">{level.name}</p>
-        <p className="type-caption">
-          {level.spawns.length} critters on {level.rows.length}{" "}
-          {level.rows.length === 1 ? "row" : "rows"}.
-          {best ? ` Your best: ${best.toLocaleString()}.` : ""}
-        </p>
+        {bonus ? (
+          <>
+            <p className="type-caption text-accent-strong flex items-center gap-1 font-medium">
+              <Gamepad2 aria-hidden className="size-3.5" />
+              Bonus game
+            </p>
+            <p className="type-label text-base">{bonus.name}</p>
+            <p className="type-secondary max-w-sm">{bonus.blurb}</p>
+            <p className="type-caption">
+              {bonus.keys} A great run is {bonus.great} points.
+              {best ? ` Your best: ${best.toLocaleString()}.` : ""}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="type-label text-base">{level.name}</p>
+            <p className="type-caption">
+              {level.spawns.length} critters on {level.rows.length}{" "}
+              {level.rows.length === 1 ? "row" : "rows"}.
+              {best ? ` Your best: ${best.toLocaleString()}.` : ""}
+            </p>
+          </>
+        )}
+        {newWorld && (
+          <p className="type-caption bg-accent text-foreground rounded-md px-2 py-1">
+            Welcome to {world.name}! {world.twist}
+          </p>
+        )}
         {level.guided && (
           <p className="type-secondary">
             {HOST}, the desk robot, shows you how to play.
@@ -398,6 +473,8 @@ export interface Report {
   newBest: boolean;
   firstClear: boolean;
   guideWords: string | null;
+  // The bonus game's name, when the level was a bonus game.
+  bonus: string | null;
 }
 
 export function ResultScreen({
@@ -425,11 +502,13 @@ export function ResultScreen({
             report.won ? "text-success-foreground" : "text-warning-foreground",
           )}
         >
-          {report.won
-            ? last
-              ? "You cleared every level!"
-              : `Level ${report.level} cleared`
-            : "The critters got through"}
+          {report.bonus
+            ? `${report.bonus}: ${report.score.toLocaleString()} points`
+            : report.won
+              ? last
+                ? "You cleared every level!"
+                : `Level ${report.level} cleared`
+              : "The critters got through"}
         </h3>
         <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5">
           <dt className="type-caption">Score</dt>
@@ -460,7 +539,9 @@ export function ResultScreen({
         )}
         <div className="mt-auto flex flex-wrap gap-1.5">
           {report.won && !last ? (
-            <Button size="xs" onClick={onNext} autoFocus>
+            // After a bonus game the keys may still be going, so the
+            // button waits to be chosen rather than taking the next press.
+            <Button size="xs" onClick={onNext} autoFocus={!report.bonus}>
               Next level
             </Button>
           ) : (

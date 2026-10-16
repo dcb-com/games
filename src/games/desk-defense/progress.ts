@@ -163,10 +163,12 @@ export function recordRound(
   score: number,
   points: number,
   won: boolean,
+  // Bonus games pay by their own rule.
+  coinsOverride?: number,
 ): RoundReport {
   const p = getProgress(player);
   const firstClear = won && level > p.cleared;
-  const coins = coinsFor(level, points, won, firstClear);
+  const coins = coinsOverride ?? coinsFor(level, points, won, firstClear);
   const before = p.best[level] ?? 0;
   const newBest = won && score > before;
   setProgress(player, {

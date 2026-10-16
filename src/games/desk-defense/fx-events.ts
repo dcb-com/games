@@ -310,6 +310,26 @@ export function takeEvents(
       }
       case "shred":
         break;
+      case "wind": {
+        // Leaves and streaks of air blowing back across the lawn.
+        for (let i = 0; i < (still ? 4 : 18); i++) {
+          const row = Math.floor(rand() * 5);
+          const p = at.cell(row, rand() * 9);
+          fx.add({
+            kind: i % 3 === 0 ? "shard" : "wind",
+            x: p.x - at.cellW,
+            y: p.y - at.size * 0.3 + rand() * at.size * 0.5,
+            vx: still ? 0 : at.cellW * (4 + rand() * 3),
+            vy: still ? 0 : (rand() - 0.5) * at.size,
+            life: 0.9,
+            size:
+              i % 3 === 0 ? at.size * 0.08 : at.cellW * (0.5 + rand() * 0.5),
+            color: i % 3 === 0 ? ART.hopper : ART.white,
+            spin: rand() * 6,
+          });
+        }
+        break;
+      }
     }
   }
 }

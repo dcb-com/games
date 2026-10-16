@@ -108,7 +108,8 @@ Two games share the box on both screens. Tabs above the box switch between
 them, and the one left behind waits, paused.
 
 - **Desk Defense** (`src/games/desk-defense`): a lane defense game in the
-  spirit of Plants vs. Zombies, with 36 levels.
+  spirit of Plants vs. Zombies, with 200 levels in four worlds and a bonus
+  game every twentieth level.
 - **Cubicle Clash** (`src/games/cubicle-clash`): build an office base and
   raid coworkers' bases, in the spirit of Clash of Clans.
 

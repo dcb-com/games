@@ -24,15 +24,15 @@ describe("progress", () => {
     const odd = parseProgress(
       JSON.stringify({
         coins: -5,
-        cleared: 99,
+        cleared: 999,
         owned: { energy: 40 },
         best: { 2: "x" },
       }),
       me,
     );
     expect(odd.coins).toBe(0);
-    expect(odd.cleared).toBe(36);
-    expect(odd.owned.energy).toBe(5);
+    expect(odd.cleared).toBe(200);
+    expect(odd.owned.energy).toBe(10);
     expect(odd.best).toEqual({});
   });
 

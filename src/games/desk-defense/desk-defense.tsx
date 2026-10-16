@@ -8,6 +8,9 @@ import type { Player } from "~/mock/game-scores";
 import type { Moment } from "~/games/moments";
 import type { Layout, Palette } from "~/games/desk-defense/draw";
 import { Fx } from "~/games/art/fx";
+import { BONUSES, bonusCoins } from "~/games/desk-defense/bonus";
+import type { BonusRun, Input, Key } from "~/games/desk-defense/bonus/kit";
+import { H as BH, W as BW } from "~/games/desk-defense/bonus/kit";
 import { takeEvents } from "~/games/desk-defense/fx-events";
 import {
   drawRound,
@@ -66,6 +69,11 @@ interface Session {
   // Seconds of play drawn so far. It stands still while the game is
   // paused, so nothing on the desk moves.
   clock: number;
+  // A bonus game in place of a round, on every twentieth level.
+  bonus: BonusRun | null;
+  // The keys held down right now, for bonus games that move while a key
+  // is held.
+  input: Input;
 }
 
 const sessions = new Map<string, Session>();
@@ -80,11 +88,27 @@ function sessionFor(player: Player): Session {
       guideSince: 0,
       fx: new Fx(),
       clock: 0,
+      bonus: null,
+      input: { held: new Set() },
     };
     sessions.set(player.email, s);
   }
   return s;
 }
+
+// The keys a bonus game hears. WASD works as well as the arrows.
+const BONUS_KEYS: Partial<Record<string, Key>> = {
+  ArrowLeft: "left",
+  ArrowRight: "right",
+  ArrowUp: "up",
+  ArrowDown: "down",
+  a: "left",
+  d: "right",
+  w: "up",
+  s: "down",
+  " ": "action",
+  Enter: "action",
+};
 
 const NOTICES: Record<Exclude<PlaceResult, "placed">, string> = {
   "closed-row": "That row is closed on this level.",
@@ -149,6 +173,29 @@ export function DeskDefense({
     const ctx = canvas?.getContext("2d");
     if (!canvas || !l || !p || !r || !ctx) return;
     const ratio = canvas.width / l.width;
+    if (s.bonus) {
+      // A bonus game draws in its own fixed units, scaled to the box.
+      const scale = Math.min(l.width / BW, l.height / BH);
+      const ox = (l.width - BW * scale) / 2;
+      const oy = (l.height - BH * scale) / 2;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, l.width, l.height);
+      ctx.setTransform(
+        ratio * scale,
+        0,
+        0,
+        ratio * scale,
+        ratio * ox,
+        ratio * oy,
+      );
+      s.bonus.draw(ctx, {
+        t: stillRef.current ? 0 : s.clock,
+        still: stillRef.current,
+        ratio: ratio * scale,
+        font: p.font,
+      });
+      return;
+    }
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     // New events become puffs and sparks, even while paused, so a helper
     // placed during a pause still shows its little ring later.
@@ -185,6 +232,29 @@ export function DeskDefense({
     return false;
   }
 
+  function finishBonus(r: Round, run: BonusRun) {
+    const s = sessionFor(player);
+    const n = r.level.number;
+    const id = run.id;
+    const coins = bonusCoins(id, run.score);
+    const result = recordRound(player, n, run.score, run.score, true, coins);
+    s.round = null;
+    s.bonus = null;
+    s.input.held.clear();
+    setResumeLevel(null);
+    setReport({
+      level: n,
+      won: true,
+      ...result,
+      guideWords:
+        run.score >= BONUSES[id].great
+          ? "A great run! That earned extra coins."
+          : `A great run is ${BONUSES[id].great} points. Replay it any time from All levels.`,
+      bonus: BONUSES[id].name,
+    });
+    setScreen("result");
+  }
+
   function finish(r: Round) {
     const s = sessionFor(player);
     const won = r.outcome === "won";
@@ -197,6 +267,7 @@ export function DeskDefense({
       won,
       ...result,
       guideWords: r.level.guided && won ? GUIDE_DONE : null,
+      bonus: null,
     });
     setScreen("result");
   }
@@ -229,6 +300,9 @@ export function DeskDefense({
   // that brings the work in, before anything else is drawn.
   useLayoutEffect(() => {
     if (!running) {
+      // Keys held when the game stopped are let go, so nothing keeps moving
+      // when it starts again.
+      sessionFor(player).input.held.clear();
       paint();
       return;
     }
@@ -240,6 +314,17 @@ export function DeskDefense({
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       const s = sessionFor(player);
+      if (s.bonus) {
+        s.bonus.step(dt, s.input);
+        s.clock += dt;
+        paint();
+        if (s.bonus.over) {
+          finishBonus(r, s.bonus);
+          return;
+        }
+        frame = requestAnimationFrame(tick);
+        return;
+      }
       const holding = r.level.guided && GUIDE[s.guideStep]?.holds;
       if (!holding) step(r, dt);
       s.clock += dt;
@@ -261,7 +346,10 @@ export function DeskDefense({
 
   function startLevel(n: number) {
     const s = sessionFor(player);
-    s.round = newRound(buildLevel(n), boostsFrom(getProgress(player).owned));
+    const level = buildLevel(n);
+    s.round = newRound(level, boostsFrom(getProgress(player).owned));
+    s.bonus = level.bonus ? BONUSES[level.bonus].make(level.theme) : null;
+    s.input.held.clear();
     s.guideStep = 0;
     s.guideSince = 0;
     s.fx.clear();
@@ -336,6 +424,16 @@ export function DeskDefense({
       return;
     }
 
+    const bonus = sessionFor(player).bonus;
+    if (bonus) {
+      const key = BONUS_KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+      if (!key) return;
+      e.preventDefault();
+      if (!e.repeat) bonus.press(key);
+      sessionFor(player).input.held.add(key);
+      return;
+    }
+
     const moves: Record<string, [number, number]> = {
       ArrowUp: [-1, 0],
       ArrowDown: [1, 0],
@@ -382,8 +480,22 @@ export function DeskDefense({
     };
   }
 
+  // A pointer on the canvas, in a bonus game's own units.
+  function bonusPoint(e: React.PointerEvent<HTMLCanvasElement>, down: boolean) {
+    const l = layoutRef.current;
+    const run = sessionFor(player).bonus;
+    if (!l || !run) return false;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const scale = Math.min(l.width / BW, l.height / BH);
+    const x = (e.clientX - rect.left - (l.width - BW * scale) / 2) / scale;
+    const y = (e.clientY - rect.top - (l.height - BH * scale) / 2) / scale;
+    run.point(x, y, down);
+    return true;
+  }
+
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!running) return;
+    if (bonusPoint(e, false)) return;
     const at = pointAt(e);
     if (at?.hit?.kind !== "cell") return;
     const { row, col } = at.hit;
@@ -394,6 +506,7 @@ export function DeskDefense({
 
   function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!running) return;
+    if (bonusPoint(e, true)) return;
     const at = pointAt(e);
     if (!at?.hit) return;
     if (at.hit.kind === "card") {
@@ -416,6 +529,11 @@ export function DeskDefense({
       data-game-slot
       data-moment={moment.kind}
       onKeyDown={onKeyDown}
+      onKeyUp={(e) => {
+        const key =
+          BONUS_KEYS[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+        if (key) sessionFor(player).input.held.delete(key);
+      }}
       onBlur={(e) => {
         const to = e.relatedTarget;
         const inside = to instanceof Node && e.currentTarget.contains(to);

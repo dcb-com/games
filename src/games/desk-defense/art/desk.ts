@@ -1,4 +1,4 @@
-import type { Ctx } from "~/games/art/color";
+import type { Ctx, Hsl } from "~/games/art/color";
 import {
   ART,
   ellipse,
@@ -9,6 +9,7 @@ import {
   shade,
   shadeDown,
 } from "~/games/art/color";
+import type { Cell, Theme } from "~/games/desk-defense/levels";
 import type { Shot } from "~/games/desk-defense/round";
 
 // The desk the critters cross, the shredders at its left end, and the
@@ -27,7 +28,49 @@ export interface Field {
 
 const cache = new Map<string, HTMLCanvasElement>();
 
-function paintDesk(ctx: Ctx, f: Field, open: number[]) {
+// Closed rows are taped off, in every world.
+function closedTape(ctx: Ctx, f: Field, y: number) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(f.left, y + f.cellH * 0.38, f.width - f.left, f.cellH * 0.24);
+  ctx.clip();
+  ctx.fillStyle = hsl(ART.yellow, 0, 0.75);
+  ctx.fillRect(f.left, y, f.width - f.left, f.cellH);
+  ctx.fillStyle = hsl(ART.ink, 0, 0.65);
+  for (let x = f.left - f.cellH; x < f.width; x += f.cellH * 0.5) {
+    ctx.beginPath();
+    ctx.moveTo(x, y + f.cellH);
+    ctx.lineTo(x + f.cellH * 0.25, y + f.cellH);
+    ctx.lineTo(x + f.cellH * 0.85, y);
+    ctx.lineTo(x + f.cellH * 0.6, y);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+// The rail on the left where the shredders sit, and a little depth: a
+// shadow under the card bar, and the far end fading into shade where the
+// critters come from.
+function railAndDepth(ctx: Ctx, f: Field, color: Hsl) {
+  const rail = ctx.createLinearGradient(0, 0, f.left, 0);
+  rail.addColorStop(0, hsl(color, -6));
+  rail.addColorStop(1, hsl(color, 10));
+  ctx.fillStyle = rail;
+  ctx.fillRect(0, f.top, f.left, f.height - f.top);
+
+  const top = ctx.createLinearGradient(0, f.top, 0, f.top + 10);
+  top.addColorStop(0, hsl(ART.shadow, 0, 0.35));
+  top.addColorStop(1, hsl(ART.shadow, 0, 0));
+  ctx.fillStyle = top;
+  ctx.fillRect(0, f.top, f.width, 10);
+  const far = ctx.createLinearGradient(f.width - f.cellW * 0.8, 0, f.width, 0);
+  far.addColorStop(0, hsl(ART.shadow, 0, 0));
+  far.addColorStop(1, hsl(ART.shadow, 0, 0.3));
+  ctx.fillStyle = far;
+  ctx.fillRect(f.width - f.cellW * 0.8, f.top, f.cellW * 0.8, f.height - f.top);
+}
+
+function paintOffice(ctx: Ctx, f: Field, open: number[]) {
   const random = seeded(7);
   for (let row = 0; row < f.rows; row++) {
     const y = f.top + row * f.cellH;
@@ -73,25 +116,7 @@ function paintDesk(ctx: Ctx, f: Field, open: number[]) {
     ctx.fillStyle = hsl(plank, 16, 0.4);
     ctx.fillRect(f.left, y, f.width - f.left, 1);
 
-    if (!isOpen) {
-      // Closed rows are taped off.
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(f.left, y + f.cellH * 0.38, f.width - f.left, f.cellH * 0.24);
-      ctx.clip();
-      ctx.fillStyle = hsl(ART.yellow, 0, 0.75);
-      ctx.fillRect(f.left, y, f.width - f.left, f.cellH);
-      ctx.fillStyle = hsl(ART.ink, 0, 0.65);
-      for (let x = f.left - f.cellH; x < f.width; x += f.cellH * 0.5) {
-        ctx.beginPath();
-        ctx.moveTo(x, y + f.cellH);
-        ctx.lineTo(x + f.cellH * 0.25, y + f.cellH);
-        ctx.lineTo(x + f.cellH * 0.85, y);
-        ctx.lineTo(x + f.cellH * 0.6, y);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
+    if (!isOpen) closedTape(ctx, f, y);
   }
 
   // A few coffee rings and a paper clip, for a lived-in desk.
@@ -105,30 +130,242 @@ function paintDesk(ctx: Ctx, f: Field, open: number[]) {
     ctx.stroke();
   }
 
-  // The rail on the left where the shredders sit.
-  const rail = ctx.createLinearGradient(0, 0, f.left, 0);
-  rail.addColorStop(0, hsl(ART.rail, -6));
-  rail.addColorStop(1, hsl(ART.rail, 10));
-  ctx.fillStyle = rail;
-  ctx.fillRect(0, f.top, f.left, f.height - f.top);
-
-  // Depth: a shadow under the card bar, and the far end fading into shade
-  // where the critters come from.
-  const top = ctx.createLinearGradient(0, f.top, 0, f.top + 10);
-  top.addColorStop(0, hsl(ART.shadow, 0, 0.35));
-  top.addColorStop(1, hsl(ART.shadow, 0, 0));
-  ctx.fillStyle = top;
-  ctx.fillRect(0, f.top, f.width, 10);
-  const far = ctx.createLinearGradient(f.width - f.cellW * 0.8, 0, f.width, 0);
-  far.addColorStop(0, hsl(ART.shadow, 0, 0));
-  far.addColorStop(1, hsl(ART.shadow, 0, 0.3));
-  ctx.fillStyle = far;
-  ctx.fillRect(f.width - f.cellW * 0.8, f.top, f.cellW * 0.8, f.height - f.top);
+  railAndDepth(ctx, f, ART.rail);
 }
 
-// The desk, drawn once for this size and these open rows, then kept.
-export function drawDesk(ctx: Ctx, f: Field, open: number[], ratio: number) {
-  const key = `${f.width}x${f.height}:${ratio}:${open.join(",")}`;
+// What a world's floor needs to know: which rows are open, and where its
+// puddles and cables lie.
+export interface Scene {
+  theme: Theme;
+  open: number[];
+  puddles: Cell[];
+  cables: Cell[];
+}
+
+const TILE: Hsl = { h: 200, s: 40, l: 90 };
+const GROUT: Hsl = { h: 205, s: 18, l: 74 };
+const COUNTER: Hsl = { h: 4, s: 60, l: 58 };
+const FLOOR: Hsl = { h: 225, s: 26, l: 20 };
+const GLOW: Hsl = { h: 186, s: 95, l: 58 };
+const LAWN: Hsl = { h: 104, s: 50, l: 50 };
+const PLANTER: Hsl = { h: 24, s: 45, l: 38 };
+
+// The break room: blue and white kitchen tiles, with coffee puddles.
+function paintBreakroom(ctx: Ctx, f: Field, scene: Scene) {
+  const random = seeded(11);
+  for (let row = 0; row < f.rows; row++) {
+    const y = f.top + row * f.cellH;
+    const isOpen = scene.open.includes(row);
+    for (let col = 0; col < f.cols; col++) {
+      const x = f.left + col * f.cellW;
+      ctx.fillStyle = hsl(
+        isOpen ? TILE : GROUT,
+        (row + col) % 2 === 0 ? 4 : -6,
+      );
+      ctx.fillRect(x, y, f.cellW + 0.5, f.cellH + 0.5);
+      // Four small tiles to a cell, with grout between.
+      ctx.strokeStyle = hsl(GROUT, 0, 0.8);
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, y + 0.5, f.cellW / 2, f.cellH / 2);
+      ctx.strokeRect(
+        x + f.cellW / 2 + 0.5,
+        y + f.cellH / 2 + 0.5,
+        f.cellW / 2,
+        f.cellH / 2,
+      );
+      // A shine on a few.
+      if (random() < 0.25) {
+        ctx.fillStyle = hsl(ART.white, 0, 0.35);
+        ctx.fillRect(
+          x + f.cellW * 0.1,
+          y + f.cellH * 0.1,
+          f.cellW * 0.12,
+          f.cellH * 0.05,
+        );
+      }
+    }
+    if (!isOpen) closedTape(ctx, f, y);
+  }
+  for (const p of scene.puddles) {
+    const x = f.left + (p.col + 0.5) * f.cellW;
+    const y = f.top + (p.row + 0.55) * f.cellH;
+    ctx.beginPath();
+    for (let i = 0; i <= 48; i++) {
+      const a = (i / 48) * Math.PI * 2;
+      const r =
+        1 + Math.sin(a * 3 + p.col) * 0.1 + Math.sin(a * 5 + p.row) * 0.05;
+      ctx.lineTo(
+        x + Math.cos(a) * f.cellW * 0.42 * r,
+        y + Math.sin(a) * f.cellH * 0.3 * r,
+      );
+    }
+    ctx.closePath();
+    const g = ctx.createRadialGradient(
+      x - f.cellW * 0.1,
+      y - f.cellH * 0.08,
+      0,
+      x,
+      y,
+      f.cellW * 0.45,
+    );
+    g.addColorStop(0, hsl(ART.brew, 22, 0.9));
+    g.addColorStop(1, hsl(ART.brew, 0, 0.85));
+    ctx.fillStyle = g;
+    ctx.fill();
+    ellipse(
+      ctx,
+      x - f.cellW * 0.14,
+      y - f.cellH * 0.1,
+      f.cellW * 0.08,
+      f.cellH * 0.04,
+    );
+    ctx.fillStyle = hsl(ART.white, 0, 0.6);
+    ctx.fill();
+  }
+  railAndDepth(ctx, f, COUNTER);
+}
+
+// The server room: dark floor panels with vents, and glowing cables.
+function paintServer(ctx: Ctx, f: Field, scene: Scene) {
+  for (let row = 0; row < f.rows; row++) {
+    const y = f.top + row * f.cellH;
+    const isOpen = scene.open.includes(row);
+    for (let col = 0; col < f.cols; col++) {
+      const x = f.left + col * f.cellW;
+      ctx.fillStyle = hsl(FLOOR, isOpen ? ((row + col) % 2 === 0 ? 6 : 2) : -4);
+      ctx.fillRect(x, y, f.cellW + 0.5, f.cellH + 0.5);
+      rounded(ctx, x + 2, y + 2, f.cellW - 4, f.cellH - 4, 3);
+      ctx.strokeStyle = hsl(FLOOR, 14, 0.9);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // Vent holes.
+      ctx.fillStyle = hsl(FLOOR, -8);
+      for (let i = 0; i < 4; i++) {
+        for (let j = 0; j < 3; j++) {
+          ellipse(
+            ctx,
+            x + f.cellW * (0.3 + i * 0.13),
+            y + f.cellH * (0.35 + j * 0.15),
+            1.3,
+            1.3,
+          );
+          ctx.fill();
+        }
+      }
+    }
+    if (!isOpen) closedTape(ctx, f, y);
+  }
+  for (const c of scene.cables) {
+    const x = f.left + c.col * f.cellW;
+    const y = f.top + (c.row + 0.78) * f.cellH;
+    const g = ctx.createLinearGradient(0, y - 6, 0, y + 6);
+    g.addColorStop(0, hsl(GLOW, 0, 0));
+    g.addColorStop(0.5, hsl(GLOW, 0, 0.55));
+    g.addColorStop(1, hsl(GLOW, 0, 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y - 6, f.cellW, 12);
+    ctx.strokeStyle = hsl(GLOW, 10);
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y);
+    ctx.bezierCurveTo(
+      x + f.cellW * 0.3,
+      y - 5,
+      x + f.cellW * 0.6,
+      y + 5,
+      x + f.cellW - 3,
+      y,
+    );
+    ctx.stroke();
+    // A plug at each end.
+    ctx.fillStyle = hsl(GLOW, 30);
+    ellipse(ctx, x + 3, y, 2.5, 2.5);
+    ctx.fill();
+    ellipse(ctx, x + f.cellW - 3, y, 2.5, 2.5);
+    ctx.fill();
+  }
+  railAndDepth(ctx, f, { h: 225, s: 30, l: 14 });
+}
+
+// The rooftop: a mown lawn in stripes, with flowers and a planter rail.
+function paintRooftop(ctx: Ctx, f: Field, scene: Scene) {
+  const random = seeded(19);
+  for (let row = 0; row < f.rows; row++) {
+    const y = f.top + row * f.cellH;
+    const isOpen = scene.open.includes(row);
+    for (let col = 0; col < f.cols; col++) {
+      const x = f.left + col * f.cellW;
+      ctx.fillStyle = isOpen
+        ? hsl(LAWN, (row + col) % 2 === 0 ? 6 : -2)
+        : hsl(ART.closed, (row + col) % 2 === 0 ? 2 : -2);
+      ctx.fillRect(x, y, f.cellW + 0.5, f.cellH + 0.5);
+    }
+    if (isOpen) {
+      // Blades of grass.
+      ctx.strokeStyle = hsl(LAWN, -14, 0.5);
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 40; i++) {
+        const gx = f.left + random() * (f.width - f.left);
+        const gy = y + random() * f.cellH;
+        ctx.beginPath();
+        ctx.moveTo(gx, gy);
+        ctx.lineTo(gx + 1, gy - 4);
+        ctx.stroke();
+      }
+      // A few flowers.
+      for (let i = 0; i < 2; i++) {
+        const fx = f.left + random() * (f.width - f.left);
+        const fy = y + f.cellH * (0.2 + random() * 0.6);
+        const petals = [ART.magenta, ART.yellow, ART.white, ART.cyan];
+        const color = petals[Math.floor(random() * petals.length)] ?? ART.white;
+        for (let k = 0; k < 5; k++) {
+          const a = (k / 5) * Math.PI * 2;
+          ellipse(ctx, fx + Math.cos(a) * 2.6, fy + Math.sin(a) * 2.6, 2, 2);
+          ctx.fillStyle = hsl(color);
+          ctx.fill();
+        }
+        ellipse(ctx, fx, fy, 1.6, 1.6);
+        ctx.fillStyle = hsl(ART.gold);
+        ctx.fill();
+      }
+    } else {
+      closedTape(ctx, f, y);
+    }
+  }
+  railAndDepth(ctx, f, PLANTER);
+}
+
+function paintDesk(ctx: Ctx, f: Field, scene: Scene) {
+  switch (scene.theme) {
+    case "office":
+      paintOffice(ctx, f, scene.open);
+      return;
+    case "breakroom":
+      paintBreakroom(ctx, f, scene);
+      return;
+    case "server":
+      paintServer(ctx, f, scene);
+      return;
+    case "rooftop":
+      paintRooftop(ctx, f, scene);
+      return;
+  }
+}
+
+function cellKey(cells: Cell[]) {
+  return cells.map((c) => `${c.row}.${c.col}`).join(",");
+}
+
+// The floor, drawn once for this size and this level, then kept.
+export function drawDesk(ctx: Ctx, f: Field, scene: Scene, ratio: number) {
+  const key = [
+    `${f.width}x${f.height}`,
+    ratio,
+    scene.theme,
+    scene.open.join(","),
+    cellKey(scene.puddles),
+    cellKey(scene.cables),
+  ].join(":");
   let canvas = cache.get(key);
   if (!canvas) {
     canvas = document.createElement("canvas");
@@ -137,7 +374,7 @@ export function drawDesk(ctx: Ctx, f: Field, open: number[], ratio: number) {
     const c = canvas.getContext("2d");
     if (!c) return;
     c.scale(ratio, ratio);
-    paintDesk(c, f, open);
+    paintDesk(c, f, scene);
     if (cache.size > 8) cache.clear();
     cache.set(key, canvas);
   }

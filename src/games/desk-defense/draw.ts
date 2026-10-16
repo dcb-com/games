@@ -218,7 +218,17 @@ export function drawRound(
   const { t, still } = view;
   const size = Math.min(l.cellW, l.cellH) * 0.92;
   ctx.clearRect(0, 0, l.width, l.height);
-  drawDesk(ctx, field(l), r.level.rows, view.ratio);
+  drawDesk(
+    ctx,
+    field(l),
+    {
+      theme: r.level.theme,
+      open: r.level.rows,
+      puddles: r.level.puddles,
+      cables: r.level.cables,
+    },
+    view.ratio,
+  );
 
   // Shredders waiting at the left end of open rows.
   for (const row of r.level.rows) {

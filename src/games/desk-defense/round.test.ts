@@ -30,22 +30,45 @@ function playWell(r: Round, seconds: number) {
 }
 
 describe("levels", () => {
-  it("has more than thirty, and the first one is guided", () => {
-    expect(LEVEL_COUNT).toBeGreaterThanOrEqual(30);
+  it("has two hundred, and the first one is guided", () => {
+    expect(LEVEL_COUNT).toBe(200);
     expect(buildLevel(1).guided).toBe(true);
     expect(buildLevel(2).guided).toBe(false);
   });
 
-  it("gets harder as it goes", () => {
-    for (let n = 3; n < LEVEL_COUNT; n++) {
-      const a = buildLevel(n);
-      const b = buildLevel(n + 1);
-      // Bosses come on a few levels only, so they are left out here.
-      const plainBugs = (l: typeof a) =>
-        l.spawns.filter((s) => s.kind !== "grumble").length;
-      expect(plainBugs(b)).toBeGreaterThanOrEqual(plainBugs(a));
+  it("gets harder as it goes, leaving out bonus games and bosses", () => {
+    const rounds = Array.from({ length: LEVEL_COUNT - 2 }, (_, i) =>
+      buildLevel(i + 3),
+    ).filter((l) => !l.bonus);
+    const plain = (l: (typeof rounds)[number]) =>
+      l.spawns.filter((s) => s.kind !== "grumble").length;
+    for (let i = 1; i < rounds.length; i++) {
+      const a = rounds[i - 1];
+      const b = rounds[i];
+      if (!a || !b) continue;
+      expect(plain(b)).toBeGreaterThanOrEqual(plain(a));
       expect(b.hpScale).toBeGreaterThan(a.hpScale);
     }
+  });
+
+  it("puts a bonus game on every twentieth level, each one different", () => {
+    const bonuses = Array.from(
+      { length: 10 },
+      (_, i) => buildLevel((i + 1) * 20).bonus,
+    );
+    expect(bonuses.every((b) => b !== null)).toBe(true);
+    expect(new Set(bonuses).size).toBe(10);
+    expect(buildLevel(21).bonus).toBeNull();
+  });
+
+  it("changes world every fifty levels, each with its twist", () => {
+    expect(buildLevel(50).theme).toBe("office");
+    expect(buildLevel(51).theme).toBe("breakroom");
+    expect(buildLevel(51).puddles.length).toBeGreaterThan(0);
+    expect(buildLevel(101).theme).toBe("server");
+    expect(buildLevel(101).cables.length).toBeGreaterThan(0);
+    expect(buildLevel(151).theme).toBe("rooftop");
+    expect(buildLevel(151).windEvery).toBeGreaterThan(0);
   });
 
   it("is the same round every time", () => {
@@ -233,5 +256,45 @@ describe("special moves", () => {
     tick(r, 4);
     expect(a.hp).toBeLessThan(a.maxHp);
     expect(b.hp).toBeLessThan(b.maxHp);
+  });
+
+  it("lets a critter slide twice as fast over a puddle", () => {
+    const dry = bench();
+    const wet = bench();
+    wet.level = { ...wet.level, puddles: [{ row: 2, col: 6 }] };
+    const a = addCritter(dry, "fuzzball", 6.9);
+    const b = addCritter(wet, "fuzzball", 6.9);
+    tick(dry, 1);
+    tick(wet, 1);
+    expect(6.9 - b.x).toBeGreaterThan((6.9 - a.x) * 1.8);
+  });
+
+  it("powers up a helper on a cable", () => {
+    const plain = bench();
+    const powered = bench();
+    powered.level = { ...powered.level, cables: [{ row: 2, col: 0 }] };
+    for (const r of [plain, powered]) {
+      place(r, "stapler", 2, 0);
+      const c = addCritter(r, "chonk", 8);
+      c.hp = 99999;
+    }
+    const shots = (r: Round) => {
+      let n = 0;
+      for (let t = 0; t < 10; t += 0.05) {
+        step(r, 0.05);
+        n += r.events.filter((e) => e.type === "fire").length;
+        r.events = [];
+      }
+      return n;
+    };
+    expect(shots(powered)).toBeGreaterThan(shots(plain));
+  });
+
+  it("blows critters back when the wind comes", () => {
+    const r = bench();
+    r.level = { ...r.level, windEvery: 1 };
+    const c = addCritter(r, "chonk", 5);
+    tick(r, 1.02);
+    expect(c.x).toBeGreaterThan(5);
   });
 });

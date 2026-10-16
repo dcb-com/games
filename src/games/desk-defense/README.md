@@ -19,12 +19,45 @@ It opens in the support console's detail pane and under the payroll wait.
 
 ## Levels
 
-There are 36. Level 1 is guided: Dot, the desk robot, explains one step at
-a time and waits while the player reads. Each level after that sends more
-critters with a little more health. New helpers and new critters arrive
-along the way, and the level card shows each one with its picture. Levels
-10, 20, 30 and 36 end with a boss, Grumble. Each level is built from a fixed
+There are 200, in four worlds of 50. Level 1 is guided: Dot, the desk robot,
+explains one step at a time and waits while the player reads. Each level
+after that sends more critters with a little more health. New helpers and
+new critters arrive along the way, and the level card shows each one with
+its picture. Levels ending in 10, 30, 50, 70 and 90 end with Grumble, the
+boss; from level 70 there are two of him. Each level is built from a fixed
 seed, so a level is the same for everyone.
+
+| Levels  | World           | Look                       | Twist                                                    |
+| ------- | --------------- | -------------------------- | -------------------------------------------------------- |
+| 1–50    | The Office      | A wooden desk              | None                                                     |
+| 51–100  | The Break Room  | Blue and white tiles       | Coffee puddles: critters slide across them twice as fast |
+| 101–150 | The Server Room | Dark floor panels          | Glowing cables: a helper set on one works a third faster |
+| 151–200 | The Rooftop     | A striped lawn and flowers | Wind: every 14 seconds a gust blows every critter back   |
+
+## Bonus games
+
+Every twentieth level is a bonus game instead of a round: a short game of
+its own, about 45 seconds, with the same characters. A bonus game always
+counts as cleared. A great score pays extra coins, and any bonus game can be
+replayed from the level list, where it shows a game pad.
+
+| Level | Bonus game       | How it plays                                                |
+| ----- | ---------------- | ----------------------------------------------------------- |
+| 20    | Whack-a-Critter  | Bonk critters as they pop out of desk drawers. Not Grumble. |
+| 40    | Staple Gallery   | A shooting gallery on five shelves. Do not staple Dot.      |
+| 60    | Coffee Catch     | Catch falling coffee beans; dodge falling fuzzballs.        |
+| 80    | Sticky Memory    | Find six pairs of critters under twelve sticky notes.       |
+| 100   | Dot's Dash       | Dot rolls along the desk; jump the critters, grab the gold. |
+| 120   | Paper Plane      | Flap a paper plane through gaps between stacks of binders.  |
+| 140   | Shredder Snake   | Snake, with a shredder eating paper and a trail of strips.  |
+| 160   | Critter Sort     | Flick each critter into the bin with its picture.           |
+| 180   | Stamp Beat       | A rhythm game with no sound: stamp critters in time.        |
+| 200   | Grumble Showdown | Dot staples Grumble while dodging his crowns.               |
+
+Each bonus game is a file in `bonus/`, built on `bonus/kit.ts`. They draw
+in a fixed 560 by 315 space that the screen scales to the box. They hear
+the same keys as the rest of the game, take WASD as well as the arrows, and
+stop the same way when work arrives.
 
 ## Helpers
 
@@ -43,15 +76,15 @@ Every helper has a special move.
 
 ## Critters
 
-| Critter  | From level     | What it does                                                           |
-| -------- | -------------- | ---------------------------------------------------------------------- |
-| Fuzzball | 1              | A round pink puff. Slow and steady.                                    |
-| Zippy    | 4              | Small, yellow, long ears, very fast                                    |
-| Chonk    | 7              | Big, purple and horned. Takes three times the hits.                    |
-| Splitter | 9              | Pops into two fast minis when stopped                                  |
-| Hopper   | 12             | Jumps clean over the first helper in its row                           |
-| Shellby  | 17             | Wears a pot for a helmet. When it breaks, Shellby gets angry and fast. |
-| Grumble  | 10, 20, 30, 36 | The boss. At half health it roars and two fuzzballs come to help.      |
+| Critter  | From level        | What it does                                                           |
+| -------- | ----------------- | ---------------------------------------------------------------------- |
+| Fuzzball | 1                 | A round pink puff. Slow and steady.                                    |
+| Zippy    | 4                 | Small, yellow, long ears, very fast                                    |
+| Chonk    | 7                 | Big, purple and horned. Takes three times the hits.                    |
+| Splitter | 9                 | Pops into two fast minis when stopped                                  |
+| Hopper   | 12                | Jumps clean over the first helper in its row                           |
+| Shellby  | 17                | Wears a pot for a helmet. When it breaks, Shellby gets angry and fast. |
+| Grumble  | 10, then every 20 | The boss. At half health it roars and two fuzzballs come to help.      |
 
 ## How it is drawn
 
@@ -69,7 +102,8 @@ still take every color from `src/theme.css`.
 
 Every critter stopped pays coins, and a cleared level pays more. Replaying a
 cleared level pays less, so moving forward pays best. Coins buy five
-upgrades in the shop, each with three to five steps.
+upgrades in the shop, each with five to ten steps, enough to carry a player
+through all 200 levels.
 
 A player's leaderboard score is the sum of their best score on each cleared
 level. The start screen and the end of each round show the top five,
@@ -107,7 +141,7 @@ is worse for everyone.
 | File               | What it holds                                               |
 | ------------------ | ----------------------------------------------------------- |
 | `units.ts`         | Every helper and critter, and the numbers that balance them |
-| `levels.ts`        | How the 36 levels are built                                 |
+| `levels.ts`        | How the 200 levels and four worlds are built                |
 | `round.ts`         | The rules of a round, with no drawing                       |
 | `draw.ts`          | Puts a round on the canvas, and draws the card bar          |
 | `art/desk.ts`      | The desk, the shredders and the things helpers throw        |

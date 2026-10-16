@@ -104,7 +104,8 @@ export type GameEvent =
   | { type: "split"; row: number; x: number }
   | { type: "broken"; row: number; col: number; kind: HelperKind }
   | { type: "placed"; row: number; col: number }
-  | { type: "shred"; row: number };
+  | { type: "shred"; row: number }
+  | { type: "wind" };
 
 export type Outcome = "playing" | "won" | "lost";
 
@@ -142,6 +143,8 @@ const SHOT_SPEED: Record<ShotKind, number> = {
   plane: 4.5,
 };
 const SHRED_SPEED = 6;
+// How much faster a helper on a server room cable works.
+export const CABLE_BOOST = 1.33;
 const HOP_TIME = 0.6;
 // Events wait here for the drawing. While nothing draws, keep only the last
 // few, so a round left alone does not fill up.
@@ -273,7 +276,11 @@ export function progress(r: Round): number {
 
 function newCritter(r: Round, kind: CritterKind, row: number, x: number) {
   const def = CRITTERS[kind];
-  const hp = def.hp * r.level.hpScale;
+  // The boss grows more slowly than the rest, so a late boss fight still
+  // fits in a short break.
+  const scale =
+    kind === "grumble" ? Math.sqrt(r.level.hpScale) : r.level.hpScale;
+  const hp = def.hp * scale;
   const critter: Critter = {
     id: r.nextId++,
     kind,
@@ -353,6 +360,20 @@ export function step(r: Round, dt: number) {
     r.nextSpawn += 1;
   }
 
+  // The rooftop's wind blows every critter back now and then.
+  const every = r.level.windEvery;
+  if (
+    every > 0 &&
+    Math.floor(r.time / every) > Math.floor((r.time - dt) / every)
+  ) {
+    emit(r, { type: "wind" });
+    for (const c of r.critters) {
+      if (c.hop) continue;
+      c.x = Math.min(COLS + 0.4, c.x + (c.kind === "grumble" ? 0.15 : 0.5));
+      c.chewing = false;
+    }
+  }
+
   stepHelpers(r, dt);
   stepShots(r, dt);
   const lost = stepCritters(r, dt);
@@ -410,10 +431,15 @@ function stepHelpers(r: Round, dt: number) {
     h.acted += dt;
     h.bitten += dt;
     const target = r.critters.some((c) => inFront(c, h));
+    // A helper on a glowing cable runs faster.
+    const powered = r.level.cables.some(
+      (c) => c.row === h.row && c.col === h.col,
+    );
+    const hdt = powered ? dt * CABLE_BOOST : dt;
 
     switch (h.kind) {
       case "coffee":
-        h.timer -= dt * r.boosts.brewSpeed;
+        h.timer -= hdt * r.boosts.brewSpeed;
         if (h.timer <= 0) {
           h.timer += def.every;
           h.acted = 0;
@@ -422,7 +448,7 @@ function stepHelpers(r: Round, dt: number) {
         }
         break;
       case "eraser":
-        h.timer -= dt;
+        h.timer -= hdt;
         if (h.timer <= 0) {
           for (const c of r.critters) {
             const near =
@@ -435,7 +461,7 @@ function stepHelpers(r: Round, dt: number) {
         }
         break;
       case "lamp":
-        h.timer = Math.max(0, h.timer - dt);
+        h.timer = Math.max(0, h.timer - hdt);
         if (target && h.timer <= 0) {
           h.timer = def.every;
           h.acted = 0;
@@ -448,7 +474,7 @@ function stepHelpers(r: Round, dt: number) {
         }
         break;
       case "fan":
-        h.gust = Math.max(0, h.gust - dt);
+        h.gust = Math.max(0, h.gust - hdt);
         if (target && h.gust <= 0) {
           h.gust = GUST_EVERY;
           emit(r, { type: "gust", row: h.row, col: h.col });
@@ -459,13 +485,13 @@ function stepHelpers(r: Round, dt: number) {
             c.chewing = false;
           }
         }
-        shoot(r, h, dt, target, "puff");
+        shoot(r, h, hdt, target, "puff");
         break;
       case "stapler":
-        shoot(r, h, dt, target, "staple");
+        shoot(r, h, hdt, target, "staple");
         break;
       case "printer":
-        shoot(r, h, dt, target, "plane");
+        shoot(r, h, hdt, target, "plane");
         break;
       case "firewall":
       case "sticky":
@@ -573,7 +599,11 @@ function stepCritters(r: Round, dt: number): boolean {
         : c.kind === "grumble" && c.angry
           ? def.speed * 1.4
           : def.speed;
-    c.x -= speed * (c.slowFor > 0 ? 0.5 : 1) * dt;
+    // Spilled coffee: a critter slides across a puddle twice as fast.
+    const slick = r.level.puddles.some(
+      (p) => p.row === c.row && p.col === Math.floor(c.x),
+    );
+    c.x -= speed * (c.slowFor > 0 ? 0.5 : 1) * (slick ? 2 : 1) * dt;
 
     const note = r.helpers.find(
       (h) =>
