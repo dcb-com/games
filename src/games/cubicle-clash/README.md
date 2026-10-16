@@ -37,7 +37,15 @@ between them.
 ## Building the fort
 
 The fort is the heart of the game. It is drawn at an angle, like a model
-village on a meadow, with forest all around.
+village in an enchanted forest at dusk. Light falls through the trees in
+long shafts, fireflies drift up, and a pond holds the pink sky. The head
+office is a great tree with a glowing round door. Its leaves turn from
+green to teal, pink blossom, lilac and finally gold as it grows, with
+mushroom towers, lanterns and at last a floating crystal. The coin press
+is a mill with a water wheel, the coffee maker a cauldron over a fire, the
+vault a mossy strongroom with a rune door, and the break room a cottage
+under a bluebell. Defenses stand on tree stumps, then stone towers; the
+desk lamp has its own wizard's tower. Walls are hedges.
 
 - **Builders.** Every new building and every upgrade takes a builder and
   some time. A player starts with two builders, gets a third at head office
@@ -48,14 +56,14 @@ village on a meadow, with forest all around.
   head office. The clock keeps running while the game is closed.
 - **Gems.** Gems finish a build at once: one gem for every 30 seconds left.
   A player starts with 10. Clearing clutter pays gems.
-- **Clutter.** Boxes, papers, bushes and rocks lie around the fort. Clearing
-  one costs a few coins, takes a builder six seconds and pays gems. More
+- **Clutter.** Fallen logs, piles of leaves, brambles and mossy rocks lie
+  around the fort. Clearing one costs a few coins, takes a builder six seconds and pays gems. More
   clutter turns up while the player is away: one piece every two hours,
   twelve at most.
 - **Celebrations.** When a build finishes, confetti and a banner say so. A
   new head office level gets a bigger show, and its building grows towers,
   flags and gold trim as it climbs.
-- **Decorations.** Potted plants, water coolers, banners, lamp posts,
+- **Decorations.** Glowcaps, wishing wells, banners, fairy lanterns,
   fountains and a golden statue of Dot. They are on the second tab of the
   build menu. They go up at once, do nothing in a raid, and can be put away
   for most of their cost back.
@@ -95,10 +103,10 @@ player is not in it, their place shows under the list.
 
 | Decoration    | Cost | Needs head office |
 | ------------- | ---- | ----------------- |
-| Potted plant  | 25   | 1                 |
-| Water cooler  | 60   | 1                 |
+| Glowcaps      | 25   | 1                 |
+| Wishing well  | 60   | 1                 |
 | Banner        | 80   | 1                 |
-| Lamp post     | 100  | 2                 |
+| Fairy lantern | 100  | 2                 |
 | Fountain      | 400  | 3                 |
 | Statue of Dot | 900  | 4                 |
 
@@ -133,7 +141,7 @@ in the same frame, every key goes back to the host, and the raid waits
 until the player presses Carry on. The base and any raid in progress are
 kept outside React, so they survive the tab switching and the payroll box
 leaving the screen. There is no sound, and with `prefers-reduced-motion`
-nothing wiggles or floats.
+nothing wiggles or floats: the fireflies and the light hold still.
 
 ## Files
 
@@ -144,7 +152,7 @@ nothing wiggles or floats.
 | `rivals.ts`         | The made-up coworkers' bases and loot                       |
 | `raid.ts`           | The rules of a raid, with no drawing                        |
 | `save.ts`           | Saved progress, raids while away and the leaderboard        |
-| `art.ts`            | The buildings, decorations, scaffolding, meadow and rubble  |
+| `art.ts`            | The buildings, decorations, scaffolding, forest and rubble  |
 | `draw.ts`           | Puts a base or a raid on the canvas                         |
 | `menus.tsx`         | Build, train, raid, log, top five and results               |
 | `cubicle-clash.tsx` | The game's box, its loop and its keys                       |

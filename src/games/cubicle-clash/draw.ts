@@ -7,6 +7,7 @@ import type { BuildingLook, Ground } from "~/games/cubicle-clash/art";
 import {
   STANDING,
   badge,
+  drawAmbient,
   drawBuilding,
   drawClutter,
   drawGround,
@@ -328,6 +329,7 @@ export function drawVillage(
     });
     ctx.globalAlpha = 1;
   }
+  drawAmbient(ctx, g, view.t, view.still);
   view.fx.draw(ctx, view.font);
 }
 
@@ -532,6 +534,7 @@ export function drawRaid(
   for (const item of items) item.draw();
 
   for (const s of r.shots) drawShot(ctx, l, s, view.t);
+  drawAmbient(ctx, g, view.t, view.still);
   view.fx.draw(ctx, view.font);
 }
 
@@ -708,7 +711,19 @@ export function drawBuildingPortrait(
   const big = BUILDINGS[kind].size === 2;
   const tile = big ? Math.min(w * 0.48, h * 0.42) : Math.min(w * 0.85, h * 0.7);
   ctx.save();
-  // A patch of grass to stand on.
+  // A patch of moss to stand on, in a soft light.
+  const light = ctx.createRadialGradient(
+    w / 2,
+    h * 0.6,
+    0,
+    w / 2,
+    h * 0.6,
+    w * 0.6,
+  );
+  light.addColorStop(0, hsl({ h: 46, s: 90, l: 78 }, 0, 0.35));
+  light.addColorStop(1, hsl({ h: 46, s: 90, l: 78 }, 0, 0));
+  ctx.fillStyle = light;
+  ctx.fillRect(0, 0, w, h);
   ellipse(
     ctx,
     w / 2,
@@ -716,7 +731,7 @@ export function drawBuildingPortrait(
     tile * (big ? 1 : 0.5),
     tile * (big ? 0.5 : 0.25),
   );
-  ctx.fillStyle = hsl({ h: 98, s: 52, l: 50 }, 0, 0.9);
+  ctx.fillStyle = hsl({ h: 104, s: 46, l: 40 }, 0, 0.9);
   ctx.fill();
   ctx.restore();
   drawBuilding(ctx, kind, w / 2, h * 0.8, tile, STANDING);

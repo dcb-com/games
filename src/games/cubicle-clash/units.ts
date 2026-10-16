@@ -202,8 +202,8 @@ export const BUILDINGS: Record<BuildingKind, BuildingDef> = {
   },
   plant: {
     kind: "plant",
-    name: "Potted plant",
-    blurb: "A leafy friend for the corner of your fort.",
+    name: "Glowcaps",
+    blurb: "Little mushrooms that glow softly at dusk.",
     role: "decor",
     size: 1,
     hp: 1,
@@ -217,8 +217,8 @@ export const BUILDINGS: Record<BuildingKind, BuildingDef> = {
   },
   cooler: {
     kind: "cooler",
-    name: "Water cooler",
-    blurb: "Where the gossip happens. Bubbles now and then.",
+    name: "Wishing well",
+    blurb: "Where the gossip happens. Toss in a coin.",
     role: "decor",
     size: 1,
     hp: 1,
@@ -233,7 +233,7 @@ export const BUILDINGS: Record<BuildingKind, BuildingDef> = {
   banner: {
     kind: "banner",
     name: "Banner",
-    blurb: "Fly your colors over the fort.",
+    blurb: "Fly your colors over the glade.",
     role: "decor",
     size: 1,
     hp: 1,
@@ -247,8 +247,8 @@ export const BUILDINGS: Record<BuildingKind, BuildingDef> = {
   },
   lamppost: {
     kind: "lamppost",
-    name: "Lamp post",
-    blurb: "A warm light along the path.",
+    name: "Fairy lantern",
+    blurb: "A warm light along the path, with fairies.",
     role: "decor",
     size: 1,
     hp: 1,
@@ -263,7 +263,7 @@ export const BUILDINGS: Record<BuildingKind, BuildingDef> = {
   fountain: {
     kind: "fountain",
     name: "Fountain",
-    blurb: "Splashing water in the courtyard.",
+    blurb: "Glowing water in the courtyard.",
     role: "decor",
     size: 1,
     hp: 1,
@@ -278,7 +278,7 @@ export const BUILDINGS: Record<BuildingKind, BuildingDef> = {
   statue: {
     kind: "statue",
     name: "Statue of Dot",
-    blurb: "A golden Dot, for forts that have made it.",
+    blurb: "A golden Dot under the moss, for forts that have made it.",
     role: "decor",
     size: 1,
     hp: 1,
@@ -347,10 +347,10 @@ export const CLUTTER: Record<
   ClutterKind,
   { name: string; cost: number; gems: number }
 > = {
-  boxes: { name: "Stack of boxes", cost: 20, gems: 1 },
-  papers: { name: "Pile of paper", cost: 10, gems: 1 },
-  bush: { name: "Bush", cost: 30, gems: 2 },
-  rock: { name: "Rock", cost: 50, gems: 3 },
+  boxes: { name: "Fallen log", cost: 20, gems: 1 },
+  papers: { name: "Pile of leaves", cost: 10, gems: 1 },
+  bush: { name: "Bramble", cost: 30, gems: 2 },
+  rock: { name: "Mossy rock", cost: 50, gems: 3 },
 };
 
 // Clearing clutter takes a builder this long.
