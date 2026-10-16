@@ -1,4 +1,4 @@
-import type { Ctx } from "~/games/desk-defense/art/color";
+import type { Ctx } from "~/games/art/color";
 import {
   ART,
   blush,
@@ -9,31 +9,44 @@ import {
   outline,
   rounded,
   shade,
-} from "~/games/desk-defense/art/color";
-import { furSpec, furSprite } from "~/games/desk-defense/art/fur";
-import type { Critter } from "~/games/desk-defense/round";
+} from "~/games/art/color";
+import { furSpec, furSprite } from "~/games/art/fur";
 import type { CritterKind } from "~/games/desk-defense/units";
 import { CRITTERS } from "~/games/desk-defense/units";
 
 // Draws one critter: its shadow, feet, furry body, face and whatever it
 // wears, plus how it feels right now: chewing, stuck, cold or burned.
 
+// What the drawing needs to know about a critter: who it is and how it
+// feels right now. Desk Defense's critters and Cubicle Clash's troops both
+// have these.
+export interface Pose {
+  id: number;
+  kind: CritterKind;
+  armor: number;
+  maxArmor: number;
+  slowFor: number;
+  stuckFor: number;
+  hop: { t: number } | null;
+  chewing: boolean;
+  flash: number;
+  burn: number;
+  angry: boolean;
+  age: number;
+  // Which way it faces. Critters face left unless this says otherwise.
+  facing?: 1 | -1;
+}
+
 // A critter standing still, for the menus and the level cards.
-export function sampleCritter(kind: CritterKind): Critter {
+export function sampleCritter(kind: CritterKind): Pose {
   const def = CRITTERS[kind];
   return {
     id: kind.length,
     kind,
-    row: 0,
-    x: 0,
-    hp: def.hp,
-    maxHp: def.hp,
     armor: def.armor,
     maxArmor: def.armor,
     slowFor: 0,
     stuckFor: 0,
-    stuckOn: 0,
-    hopped: false,
     hop: null,
     chewing: false,
     flash: 0,
@@ -262,7 +275,7 @@ export interface CritterLook {
 // size the critter is drawn against.
 export function drawCritter(
   ctx: Ctx,
-  c: Critter,
+  c: Pose,
   x: number,
   y: number,
   s: number,
@@ -317,6 +330,9 @@ export function drawCritter(
   ctx.translate(x + wiggle, feetY + hopY);
   ctx.rotate(hopTilt);
   ctx.scale(pop, pop);
+  // Drawn facing left; a critter heading right is drawn mirrored.
+  const back = c.facing === 1 ? -1 : 1;
+  ctx.scale(back, 1);
 
   const bodyY = -size * 0.36 - bob;
   const squash = moving ? Math.sin(phase * 2) * 0.05 : chew * 0.06;
@@ -497,10 +513,10 @@ export function drawCritter(
     ctx.lineCap = "round";
     for (let i = 0; i < 3; i++) {
       const ly = y - size * 0.15 + i * u * 1.4 - bob;
-      const lx = x + size * 0.42 + ((t * 30 + i * 7) % 6) * u * 0.2;
+      const lx = x + back * (size * 0.42 + ((t * 30 + i * 7) % 6) * u * 0.2);
       ctx.beginPath();
       ctx.moveTo(lx, ly);
-      ctx.lineTo(lx + u * 2.2, ly);
+      ctx.lineTo(lx + back * u * 2.2, ly);
       ctx.stroke();
     }
   }

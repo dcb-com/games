@@ -7,7 +7,8 @@ import { Button } from "@dcb/ui/button";
 import type { Player } from "~/mock/game-scores";
 import type { Moment } from "~/games/moments";
 import type { Layout, Palette } from "~/games/desk-defense/draw";
-import { Fx } from "~/games/desk-defense/art/fx";
+import { Fx } from "~/games/art/fx";
+import { takeEvents } from "~/games/desk-defense/fx-events";
 import {
   drawRound,
   fxPlace,
@@ -111,8 +112,10 @@ export function DeskDefense({
   const [guideStep, setGuideStep] = useState(
     () => sessionFor(player).guideStep,
   );
-  // The player stepped away: Escape, or focus left the game.
-  const [held, setHeld] = useState(false);
+  // The player stepped away: Escape, focus left the game, or the game was
+  // put away (another tab, or the box left the screen) in the middle of a
+  // round. A round never starts again by itself.
+  const [held, setHeld] = useState(() => sessionFor(player).screen === "play");
   const [notice, setNotice] = useState<string | null>(null);
   const [resumeLevel, setResumeLevel] = useState<number | null>(
     () => sessionFor(player).round?.level.number ?? null,
@@ -149,7 +152,7 @@ export function DeskDefense({
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     // New events become puffs and sparks, even while paused, so a helper
     // placed during a pause still shows its little ring later.
-    s.fx.take(r.events, fxPlace(l), stillRef.current);
+    takeEvents(s.fx, r.events, fxPlace(l), stillRef.current);
     r.events = [];
     drawRound(ctx, p, l, r, {
       t: stillRef.current ? 0 : s.clock,

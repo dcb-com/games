@@ -61,7 +61,7 @@ so the game runs at a full frame rate. The face, feet and the rest are drawn
 fresh each frame, so critters waddle, blink, chomp, hop and burst into puffs
 of fur. Helpers recoil, glow and shake as they work and get bitten.
 
-The art's colors live in `art/color.ts`, apart from the theme, because the
+The art's colors live in `src/games/art/color.ts`, apart from the theme, because the
 art is the game's own picture. The card bar and the menus around the desk
 still take every color from `src/theme.css`.
 
@@ -110,14 +110,13 @@ is worse for everyone.
 | `levels.ts`        | How the 36 levels are built                                 |
 | `round.ts`         | The rules of a round, with no drawing                       |
 | `draw.ts`          | Puts a round on the canvas, and draws the card bar          |
-| `art/color.ts`     | The art's colors, and eyes, shading and outlines            |
-| `art/fur.ts`       | Furry bodies, drawn once per size and kept                  |
-| `art/critters.ts`  | Each critter's face, ears, feet and moods                   |
-| `art/helpers.ts`   | Each helper, with its face and its special move             |
 | `art/desk.ts`      | The desk, the shredders and the things helpers throw        |
-| `art/fx.ts`        | Puffs, sparks, beams and flying energy                      |
 | `guide.ts`         | What Dot says on level 1                                    |
 | `upgrades.ts`      | What coins buy                                              |
 | `progress.ts`      | Saved progress and the leaderboard                          |
 | `menus.tsx`        | The screens around a round                                  |
 | `desk-defense.tsx` | The game's box, its loop and its keys                       |
+
+The fur, eyes, critters, helpers and effects are shared with Cubicle Clash,
+so they live in `src/games/art`. `fx-events.ts` turns a round's events into
+those effects.

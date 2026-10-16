@@ -1,5 +1,5 @@
-import type { Ctx, Hsl } from "~/games/desk-defense/art/color";
-import { ART, ellipse, hsl, seeded } from "~/games/desk-defense/art/color";
+import type { Ctx, Hsl } from "~/games/art/color";
+import { ART, ellipse, hsl, seeded } from "~/games/art/color";
 import type { CritterKind } from "~/games/desk-defense/units";
 
 // A critter's furry body, drawn stroke by stroke. That is a few hundred

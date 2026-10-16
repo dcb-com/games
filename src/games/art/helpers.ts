@@ -1,4 +1,4 @@
-import type { Ctx } from "~/games/desk-defense/art/color";
+import type { Ctx } from "~/games/art/color";
 import {
   ART,
   blush,
@@ -11,10 +11,9 @@ import {
   shade,
   shadeDown,
   smile,
-} from "~/games/desk-defense/art/color";
-import type { Helper } from "~/games/desk-defense/round";
+} from "~/games/art/color";
 import type { HelperKind } from "~/games/desk-defense/units";
-import { HELPERS, POWER_EVERY, STICKY_USES } from "~/games/desk-defense/units";
+import { STICKY_USES } from "~/games/desk-defense/units";
 
 // Draws the office helpers. Each one is a cute desk object with a face, and
 // each shows its special move: the stapler's arm snaps down, the coffee pot
@@ -33,21 +32,6 @@ export interface HelperLook {
   // The next staple is a gold one.
   power: boolean;
   hpShare: number;
-}
-
-export function lookOf(h: Helper, t: number, still: boolean): HelperLook {
-  const def = HELPERS[h.kind];
-  const every = def.every > 0 ? def.every : 1;
-  return {
-    t,
-    still,
-    acted: h.acted,
-    bitten: h.bitten,
-    charge: Math.min(1, Math.max(0, 1 - h.timer / every)),
-    uses: h.uses,
-    power: h.kind === "stapler" && (h.shots + 1) % POWER_EVERY === 0,
-    hpShare: h.hp / h.maxHp,
-  };
 }
 
 export const RESTING: HelperLook = {

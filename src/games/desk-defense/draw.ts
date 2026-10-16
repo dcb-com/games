@@ -1,19 +1,21 @@
-import { ART, ellipse, hsl, rounded } from "~/games/desk-defense/art/color";
-import { drawCritter, sampleCritter } from "~/games/desk-defense/art/critters";
+import { ART, ellipse, hsl, rounded } from "~/games/art/color";
+import { drawCritter, sampleCritter } from "~/games/art/critters";
 import type { Field } from "~/games/desk-defense/art/desk";
 import {
   drawDesk,
   drawShot,
   drawShredder,
 } from "~/games/desk-defense/art/desk";
-import { furSprite } from "~/games/desk-defense/art/fur";
-import type { Fx, Place } from "~/games/desk-defense/art/fx";
-import { RESTING, drawHelper, lookOf } from "~/games/desk-defense/art/helpers";
+import { furSprite } from "~/games/art/fur";
+import type { Fx } from "~/games/art/fx";
+import type { Place } from "~/games/desk-defense/fx-events";
+import type { HelperLook } from "~/games/art/helpers";
+import { RESTING, drawHelper } from "~/games/art/helpers";
 import { COLS, ROWS } from "~/games/desk-defense/levels";
-import type { Round, Tool } from "~/games/desk-defense/round";
+import type { Helper, Round, Tool } from "~/games/desk-defense/round";
 import { canPlace, helperAt, progress } from "~/games/desk-defense/round";
 import type { CritterKind, HelperKind } from "~/games/desk-defense/units";
-import { CRITTERS, HELPERS } from "~/games/desk-defense/units";
+import { CRITTERS, HELPERS, POWER_EVERY } from "~/games/desk-defense/units";
 
 // Draws a whole round onto the canvas: the desk, then each row's helpers,
 // critters and shots, then the effects, then the card bar on top. The bar
@@ -171,6 +173,22 @@ export interface View {
   ratio: number;
   fx: Fx;
   showCursor: boolean;
+}
+
+// How a placed helper looks right now.
+function lookOf(h: Helper, t: number, still: boolean): HelperLook {
+  const def = HELPERS[h.kind];
+  const every = def.every > 0 ? def.every : 1;
+  return {
+    t,
+    still,
+    acted: h.acted,
+    bitten: h.bitten,
+    charge: Math.min(1, Math.max(0, 1 - h.timer / every)),
+    uses: h.uses,
+    power: h.kind === "stapler" && (h.shots + 1) % POWER_EVERY === 0,
+    hpShare: h.hp / h.maxHp,
+  };
 }
 
 function healthBar(

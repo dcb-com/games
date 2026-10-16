@@ -102,12 +102,24 @@ Some facts about the real screens that shape a game:
 | `src/money`, `src/phone` | How DCB formats money and phone numbers.                                                           |
 | `tooling/oxlint`         | DCB's own lint rules.                                                                              |
 
+## The games so far
+
+Two games share the box on both screens. Tabs above the box switch between
+them, and the one left behind waits, paused.
+
+- **Desk Defense** (`src/games/desk-defense`): a lane defense game in the
+  spirit of Plants vs. Zombies, with 36 levels.
+- **Cubicle Clash** (`src/games/cubicle-clash`): build an office base and
+  raid coworkers' bases, in the spirit of Clash of Clans.
+
+Each folder has a README. The tabs are in `src/games/game-box.tsx`, and the
+art the two games share is in `src/games/art`.
+
 ## Adding a game
 
 1. Make a folder for it: `src/games/<name>/`.
-2. Show it in place of `<GameSlot>`: in `src/console/support/inbox/detail-empty.tsx`
-   for the console, in `src/dashboard/pages/payroll-run.tsx` for payroll. Keep
-   the box's size.
+2. Add it as a tab in `src/games/game-box.tsx`, which both screens show.
+   Keep the box's size.
 3. Read the moment from `consoleMoment` or `payrollMoment` in
    `src/games/moments.ts`. When it turns to `pause`, stop the game at once.
 4. Try every moment with the mock controls before you call it done.

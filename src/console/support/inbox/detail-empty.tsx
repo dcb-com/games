@@ -2,7 +2,7 @@ import { Inbox } from "lucide-react";
 
 import { Button } from "@dcb/ui/button";
 
-import { DeskDefense } from "~/games/desk-defense/desk-defense";
+import { GameBox } from "~/games/game-box";
 import { consoleMoment } from "~/games/moments";
 import { useMock } from "~/mock/store";
 import { MINE_GUIDE } from "~/console/support/case-words";
@@ -35,7 +35,7 @@ export function DetailEmpty({ view }: { view: "new" | "mine" }) {
       {/* Not in the real console: a game for while the agent has
           nothing to do. */}
       {me && (
-        <DeskDefense
+        <GameBox
           moment={moment}
           player={{ name: me.name, email: me.email }}
           className="max-w-xl shrink-0"

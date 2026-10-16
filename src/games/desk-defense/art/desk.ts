@@ -1,4 +1,4 @@
-import type { Ctx } from "~/games/desk-defense/art/color";
+import type { Ctx } from "~/games/art/color";
 import {
   ART,
   ellipse,
@@ -8,7 +8,7 @@ import {
   seeded,
   shade,
   shadeDown,
-} from "~/games/desk-defense/art/color";
+} from "~/games/art/color";
 import type { Shot } from "~/games/desk-defense/round";
 
 // The desk the critters cross, the shredders at its left end, and the
